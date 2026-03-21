@@ -32,6 +32,11 @@ export type Customer = {
   version: number
 }
 
+export type EquipmentAllocation = {
+  equipmentId: string
+  quantity: number
+}
+
 export type AvailableSlot = {
   slotId: string
   startTime: string
@@ -40,8 +45,22 @@ export type AvailableSlot = {
   staffName: string
   roomId: string
   roomName: string
-  equipment: Array<{
-    equipmentId: string
-    quantity: number
-  }>
+  equipment: EquipmentAllocation[]
+}
+
+export type SchedulingLockResponse = {
+  lockId: string
+  expiresAt: string
+}
+
+export type ScheduleSessionResponse = {
+  appointmentId: string
+  sessionId: string
+  status: string
+  startTime: string
+  endTime: string
+  staffId: string
+  roomId: string
+  equipment: EquipmentAllocation[]
+  version: number
 }
