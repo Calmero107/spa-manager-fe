@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { api } from '@/lib/api'
 import { createRequestId } from '@/lib/request-id'
@@ -173,6 +174,12 @@ export function SchedulingPage() {
             <p>Status: {scheduledResult.status}</p>
             <p>Start: {new Date(scheduledResult.startTime).toLocaleString()}</p>
             <p>End: {new Date(scheduledResult.endTime).toLocaleString()}</p>
+            <Link
+              to={`/appointments/lifecycle?appointmentId=${scheduledResult.appointmentId}&sessionId=${scheduledResult.sessionId}`}
+              className="mt-4 inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
+            >
+              Go to appointment lifecycle
+            </Link>
           </div>
         ) : null}
       </PageCard>

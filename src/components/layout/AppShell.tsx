@@ -6,6 +6,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/customers', label: 'Customers' },
   { to: '/scheduling', label: 'Scheduling' },
+  { to: '/appointments/lifecycle', label: 'Appointment Lifecycle' },
 ]
 
 export function AppShell() {

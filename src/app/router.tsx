@@ -4,6 +4,7 @@ import { DashboardPage } from '@/app/DashboardPage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { CustomersPage } from '@/features/customer/pages/CustomersPage'
+import { AppointmentLifecyclePage } from '@/features/appointment/pages/AppointmentLifecyclePage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
 
 export const router = createBrowserRouter([
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'customers', element: <CustomersPage /> },
       { path: 'scheduling', element: <SchedulingPage /> },
+      { path: 'appointments/lifecycle', element: <AppointmentLifecyclePage /> },
     ],
   },
 ])
