@@ -1,23 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
-import { api } from '@/lib/api'
-import type { ApiResponse, Customer } from '@/types/api'
+import { getCustomers } from '@/features/customer/services/customer.api'
 
 const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-
-async function fetchCustomers() {
-  const response = await api.get<ApiResponse<Customer[]>>(`/customers?branchId=${DEFAULT_BRANCH_ID}`)
-  return response.data.data
-}
 
 export function CustomersPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['customers', DEFAULT_BRANCH_ID],
-    queryFn: fetchCustomers,
+    queryFn: () => getCustomers(DEFAULT_BRANCH_ID),
   })
 
   return (
     <PageCard title="Customers" description="Mapped to current backend customer APIs.">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-400">Current branch: {DEFAULT_BRANCH_ID}</p>
+        <Link to="/customers/new" className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300">
+          Create customer
+        </Link>
+      </div>
       {isLoading ? <p className="text-slate-400">Loading customers...</p> : null}
       {error ? <p className="text-rose-400">Failed to load customers.</p> : null}
       <div className="overflow-hidden rounded-xl border border-slate-800">
@@ -32,7 +33,11 @@ export function CustomersPage() {
           <tbody className="divide-y divide-slate-800">
             {data?.map((customer) => (
               <tr key={customer.id} className="bg-slate-900/40">
-                <td className="px-4 py-3 text-white">{customer.name || '-'}</td>
+                <td className="px-4 py-3 text-white">
+                  <Link to={`/customers/${customer.id}`} className="hover:text-cyan-300">
+                    {customer.name || '-'}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-slate-300">{customer.phone}</td>
                 <td className="px-4 py-3 text-slate-400">{new Date(customer.createdAt).toLocaleString()}</td>
               </tr>

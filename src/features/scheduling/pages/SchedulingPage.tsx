@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { SchedulingResultCard } from '@/features/scheduling/components/SchedulingResultCard'
 import { api } from '@/lib/api'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
@@ -160,28 +161,18 @@ export function SchedulingPage() {
 
         {lastLock ? (
           <div className="mt-4 rounded-xl border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-300">
-            <p>Lock ID: {lastLock.lockId}</p>
-            <p>Expires at: {new Date(lastLock.expiresAt).toLocaleString()}</p>
-            <p>Remaining seconds: {remainingSeconds ?? 0}</p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p>Lock ID: {lastLock.lockId}</p>
+                <p>Expires at: {new Date(lastLock.expiresAt).toLocaleString()}</p>
+                <p>Remaining seconds: {remainingSeconds ?? 0}</p>
+              </div>
+              <StatusBadge value={(remainingSeconds ?? 0) > 0 ? 'CONFIRMED' : 'CANCELLED'} />
+            </div>
           </div>
         ) : null}
 
-        {scheduledResult ? (
-          <div className="mt-4 rounded-xl border border-cyan-800 bg-cyan-950/30 p-4 text-sm text-cyan-200">
-            <p className="font-medium text-white">Scheduling completed</p>
-            <p className="mt-2">Appointment ID: {scheduledResult.appointmentId}</p>
-            <p>Session ID: {scheduledResult.sessionId}</p>
-            <p>Status: {scheduledResult.status}</p>
-            <p>Start: {new Date(scheduledResult.startTime).toLocaleString()}</p>
-            <p>End: {new Date(scheduledResult.endTime).toLocaleString()}</p>
-            <Link
-              to={`/appointments/lifecycle?appointmentId=${scheduledResult.appointmentId}&sessionId=${scheduledResult.sessionId}`}
-              className="mt-4 inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-            >
-              Go to appointment lifecycle
-            </Link>
-          </div>
-        ) : null}
+        {scheduledResult ? <SchedulingResultCard result={scheduledResult} /> : null}
       </PageCard>
 
       <PageCard title="Slots" description="Select one slot, then lock and schedule it.">
@@ -207,11 +198,11 @@ export function SchedulingPage() {
         </div>
       </PageCard>
 
-      <PageCard title="Current FE notes" description="Useful until appointment lifecycle UI is added.">
+      <PageCard title="Current FE notes" description="Current scheduling state and operator reminders.">
         <ul className="space-y-2 text-sm text-slate-300">
           <li>- After schedule succeeds, keep the returned appointment ID for cancel/reschedule/check-in flows.</li>
           <li>- The backend requires `X-Request-Id` for write APIs like schedule/cancel/reschedule/check-in/complete.</li>
-          <li>- Current screen focuses on the scheduling happy path first.</li>
+          <li>- If lock countdown reaches 0, query + lock again before scheduling.</li>
         </ul>
       </PageCard>
     </div>

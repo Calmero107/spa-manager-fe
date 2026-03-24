@@ -32,6 +32,12 @@ export type Customer = {
   version: number
 }
 
+export type CreateCustomerPayload = {
+  branchId: string
+  phone: string
+  name: string
+}
+
 export type EquipmentAllocation = {
   equipmentId: string
   quantity: number

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { api } from '@/lib/api'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
@@ -214,6 +215,12 @@ export function AppointmentLifecyclePage() {
 
         {latestActionSummary ? (
           <div className="mt-5 rounded-xl border border-cyan-800 bg-cyan-950/20 p-4 text-sm text-cyan-200">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="font-medium text-white">Latest lifecycle result</p>
+              {'appointmentStatus' in latestActionSummary && typeof latestActionSummary.appointmentStatus === 'string' ? (
+                <StatusBadge value={latestActionSummary.appointmentStatus} />
+              ) : null}
+            </div>
             <pre className="overflow-auto whitespace-pre-wrap">{JSON.stringify(latestActionSummary, null, 2)}</pre>
           </div>
         ) : null}
