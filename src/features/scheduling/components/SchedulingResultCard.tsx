@@ -13,12 +13,20 @@ export function SchedulingResultCard({ result }: { result: ScheduleSessionRespon
       <p>Session ID: {result.sessionId}</p>
       <p>Start: {new Date(result.startTime).toLocaleString()}</p>
       <p>End: {new Date(result.endTime).toLocaleString()}</p>
-      <Link
-        to={`/appointments/lifecycle?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`}
-        className="mt-4 inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-      >
-        Go to appointment lifecycle
-      </Link>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          to={`/appointments/detail?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`}
+          className="inline-flex rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-900/40"
+        >
+          Open appointment detail
+        </Link>
+        <Link
+          to={`/appointments/lifecycle?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`}
+          className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
+        >
+          Go to appointment lifecycle
+        </Link>
+      </div>
     </div>
   )
 }

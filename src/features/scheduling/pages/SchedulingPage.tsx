@@ -4,6 +4,7 @@ import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SchedulingResultCard } from '@/features/scheduling/components/SchedulingResultCard'
 import { api } from '@/lib/api'
+import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
@@ -78,6 +79,10 @@ export function SchedulingPage() {
     mutationFn: scheduleSession,
     onSuccess: (data) => {
       setScheduledResult(data)
+      appointmentFlowStorage.set({
+        appointmentId: data.appointmentId,
+        sessionId: data.sessionId,
+      })
     },
   })
 

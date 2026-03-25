@@ -6,6 +6,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { CustomersPage } from '@/features/customer/pages/CustomersPage'
 import { CustomerCreatePage } from '@/features/customer/pages/CustomerCreatePage'
 import { CustomerDetailPage } from '@/features/customer/pages/CustomerDetailPage'
+import { AppointmentDetailPage } from '@/features/appointment/pages/AppointmentDetailPage'
 import { AppointmentLifecyclePage } from '@/features/appointment/pages/AppointmentLifecyclePage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
 
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'customers/new', element: <CustomerCreatePage /> },
       { path: 'customers/:customerId', element: <CustomerDetailPage /> },
       { path: 'scheduling', element: <SchedulingPage /> },
+      { path: 'appointments/detail', element: <AppointmentDetailPage /> },
       { path: 'appointments/lifecycle', element: <AppointmentLifecyclePage /> },
     ],
   },

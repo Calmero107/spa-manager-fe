@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { api } from '@/lib/api'
+import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
@@ -98,8 +99,9 @@ async function rescheduleAppointment(payload: { appointmentId: string; lockId: s
 
 export function AppointmentLifecyclePage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? '')
-  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? DEFAULT_SESSION_ID)
+  const persistedFlow = appointmentFlowStorage.get()
+  const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? persistedFlow?.appointmentId ?? '')
+  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID)
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lockInfo, setLockInfo] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
@@ -109,6 +111,10 @@ export function AppointmentLifecyclePage() {
     if (appointmentId) next.set('appointmentId', appointmentId)
     if (sessionId) next.set('sessionId', sessionId)
     setSearchParams(next, { replace: true })
+
+    if (appointmentId && sessionId) {
+      appointmentFlowStorage.set({ appointmentId, sessionId })
+    }
   }, [appointmentId, searchParams, sessionId, setSearchParams])
 
   const cancelMutation = useMutation({ mutationFn: cancelAppointment })
@@ -163,6 +169,14 @@ export function AppointmentLifecyclePage() {
   return (
     <div className="space-y-6">
       <PageCard title="Appointment lifecycle" description="Mapped to cancel / reschedule / check-in / complete APIs in the current backend.">
+        <div className="mb-5 flex flex-wrap gap-3">
+          <a
+            href={appointmentId ? `/appointments/detail?appointmentId=${appointmentId}&sessionId=${sessionId}` : '/appointments/detail'}
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+          >
+            Open appointment detail page
+          </a>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm text-slate-300">Appointment ID</label>

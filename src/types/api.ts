@@ -70,3 +70,14 @@ export type ScheduleSessionResponse = {
   equipment: EquipmentAllocation[]
   version: number
 }
+
+export type AppointmentDetail = {
+  id: string
+  sessionId: string
+  staffId: string
+  roomId: string
+  startTime: string
+  endTime: string
+  status: string
+  branchId: string
+}
