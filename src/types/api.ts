@@ -75,9 +75,13 @@ export type AppointmentDetail = {
   id: string
   sessionId: string
   staffId: string
+  staffName: string
   roomId: string
+  roomName: string
   startTime: string
   endTime: string
   status: string
   branchId: string
+  sessionStatus: string
+  version: number
 }
