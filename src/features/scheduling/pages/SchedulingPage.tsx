@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SchedulingResultCard } from '@/features/scheduling/components/SchedulingResultCard'
@@ -12,10 +13,10 @@ const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-11
 const DEFAULT_SESSION_ID = import.meta.env.VITE_DEFAULT_SESSION_ID ?? '88888888-8888-8888-8888-888888888888'
 const DEFAULT_STAFF_ID = import.meta.env.VITE_DEFAULT_STAFF_ID ?? '22222222-2222-2222-2222-222222222222'
 
-async function querySlots() {
+async function querySlots(sessionId: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
     branchId: DEFAULT_BRANCH_ID,
-    sessionId: DEFAULT_SESSION_ID,
+    sessionId,
     preferredStaffId: DEFAULT_STAFF_ID,
     dateFrom: '2026-04-15',
     dateTo: '2026-04-17',
@@ -23,18 +24,18 @@ async function querySlots() {
   return response.data.data
 }
 
-async function lockSlot(slotId: string) {
+async function lockSlot(sessionId: string, slotId: string) {
   const response = await api.post<ApiResponse<SchedulingLockResponse>>('/scheduling/slots/lock', {
     branchId: DEFAULT_BRANCH_ID,
-    sessionId: DEFAULT_SESSION_ID,
+    sessionId,
     slotId,
   })
   return response.data.data
 }
 
-async function scheduleSession(payload: { slotId: string; lockId: string }) {
+async function scheduleSession(sessionId: string, payload: { slotId: string; lockId: string }) {
   const response = await api.post<ApiResponse<ScheduleSessionResponse>>(
-    `/sessions/${DEFAULT_SESSION_ID}/schedule`,
+    `/sessions/${sessionId}/schedule`,
     {
       branchId: DEFAULT_BRANCH_ID,
       lockId: payload.lockId,
@@ -52,13 +53,19 @@ async function scheduleSession(payload: { slotId: string; lockId: string }) {
 }
 
 export function SchedulingPage() {
+  const [searchParams] = useSearchParams()
+  const persistedFlow = appointmentFlowStorage.get()
+  const [sessionId] = useState(
+    searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID,
+  )
+
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lastLock, setLastLock] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const [scheduledResult, setScheduledResult] = useState<ScheduleSessionResponse | null>(null)
 
   const queryMutation = useMutation({
-    mutationFn: querySlots,
+    mutationFn: () => querySlots(sessionId),
     onSuccess: () => {
       setSelectedSlot(null)
       setLastLock(null)
@@ -68,7 +75,7 @@ export function SchedulingPage() {
   })
 
   const lockMutation = useMutation({
-    mutationFn: lockSlot,
+    mutationFn: (slotId: string) => lockSlot(sessionId, slotId),
     onSuccess: (data) => {
       setLastLock(data)
       setScheduledResult(null)
@@ -76,7 +83,7 @@ export function SchedulingPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: scheduleSession,
+    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(sessionId, payload),
     onSuccess: (data) => {
       setScheduledResult(data)
       appointmentFlowStorage.set({
