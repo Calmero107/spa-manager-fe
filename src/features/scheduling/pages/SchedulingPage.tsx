@@ -126,6 +126,12 @@ export function SchedulingPage() {
   return (
     <div className="space-y-6">
       <PageCard title="Scheduling Playground" description="End-to-end FE mapping for query → lock → schedule session.">
+        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
+          <p>
+            Using <span className="font-mono text-slate-200">sessionId={sessionId}</span> for all scheduling calls on this screen
+            (override by opening from Treatment Plan detail or manually editing the URL query).
+          </p>
+        </div>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
