@@ -38,6 +38,35 @@ export type CreateCustomerPayload = {
   name: string
 }
 
+export type SessionSummary = {
+  id: string
+  sequenceNo: number
+  status: string
+  serviceName: string
+  duration: number
+  price: number
+  branchId: string
+  version: number
+}
+
+export type TreatmentPlan = {
+  id: string
+  customerId: string
+  branchId: string
+  status: string
+  totalPrice: number
+  createdAt: string
+  updatedAt: string | null
+  version: number
+  sessions: SessionSummary[]
+}
+
+export type CreateTreatmentPlanPayload = {
+  branchId: string
+  customerId: string
+  serviceIds: string[]
+}
+
 export type EquipmentAllocation = {
   equipmentId: string
   quantity: number
