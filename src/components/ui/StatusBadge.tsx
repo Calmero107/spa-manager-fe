@@ -7,6 +7,9 @@ const tones: Record<string, string> = {
   CANCELLED: 'border-rose-700 bg-rose-950/40 text-rose-200',
   SCHEDULED: 'border-cyan-700 bg-cyan-950/40 text-cyan-200',
   IN_PROGRESS: 'border-amber-700 bg-amber-950/40 text-amber-200',
+  ACTIVE: 'border-emerald-700 bg-emerald-950/40 text-emerald-200',
+  PAUSED: 'border-amber-700 bg-amber-950/40 text-amber-200',
+  DRAFT: 'border-slate-700 bg-slate-900/70 text-slate-200',
   NOT_SCHEDULED: 'border-slate-700 bg-slate-900/70 text-slate-200',
 }
 

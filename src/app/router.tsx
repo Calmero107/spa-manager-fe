@@ -8,6 +8,9 @@ import { CustomerCreatePage } from '@/features/customer/pages/CustomerCreatePage
 import { CustomerDetailPage } from '@/features/customer/pages/CustomerDetailPage'
 import { AppointmentDetailPage } from '@/features/appointment/pages/AppointmentDetailPage'
 import { AppointmentLifecyclePage } from '@/features/appointment/pages/AppointmentLifecyclePage'
+import { TreatmentPlanCreatePage } from '@/features/treatment-plan/pages/TreatmentPlanCreatePage'
+import { TreatmentPlanDetailPage } from '@/features/treatment-plan/pages/TreatmentPlanDetailPage'
+import { TreatmentPlansPage } from '@/features/treatment-plan/pages/TreatmentPlansPage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
 
 export const router = createBrowserRouter([
@@ -28,6 +31,9 @@ export const router = createBrowserRouter([
       { path: 'customers', element: <CustomersPage /> },
       { path: 'customers/new', element: <CustomerCreatePage /> },
       { path: 'customers/:customerId', element: <CustomerDetailPage /> },
+      { path: 'treatment-plans', element: <TreatmentPlansPage /> },
+      { path: 'treatment-plans/new', element: <TreatmentPlanCreatePage /> },
+      { path: 'treatment-plans/:planId', element: <TreatmentPlanDetailPage /> },
       { path: 'scheduling', element: <SchedulingPage /> },
       { path: 'appointments/detail', element: <AppointmentDetailPage /> },
       { path: 'appointments/lifecycle', element: <AppointmentLifecyclePage /> },

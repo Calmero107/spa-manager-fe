@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/customers', label: 'Customers' },
+  { to: '/treatment-plans', label: 'Treatment Plans' },
   { to: '/scheduling', label: 'Scheduling' },
   { to: '/appointments/detail', label: 'Appointment Detail' },
   { to: '/appointments/lifecycle', label: 'Appointment Lifecycle' },
