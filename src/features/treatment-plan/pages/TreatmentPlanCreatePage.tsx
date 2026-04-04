@@ -1,19 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { getCustomers } from '@/features/customer/services/customer.api'
 import { getServices } from '@/features/service/services/service.api'
 import { createTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
 
 const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-const DEFAULT_CUSTOMER_ID = '66666666-6666-6666-6666-666666666666'
 
 const schema = z.object({
-  branchId: z.string().min(1),
-  customerId: z.string().min(1, 'Customer ID is required'),
+  customerId: z.string().min(1, 'Customer is required'),
   serviceIds: z.array(z.string()).min(1, 'Select at least one service'),
+  customerSearch: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -21,6 +23,11 @@ type FormValues = z.infer<typeof schema>
 export function TreatmentPlanCreatePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const prefilledCustomerId = searchParams.get('customerId') ?? ''
+
   const {
     register,
     handleSubmit,
@@ -30,14 +37,21 @@ export function TreatmentPlanCreatePage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      branchId: DEFAULT_BRANCH_ID,
-      customerId: DEFAULT_CUSTOMER_ID,
+      customerId: prefilledCustomerId,
       serviceIds: [],
+      customerSearch: '',
     },
   })
 
   const selectedServiceIds = watch('serviceIds')
-  const branchId = watch('branchId')
+  const selectedCustomerId = watch('customerId')
+  const customerSearch = watch('customerSearch') ?? ''
+
+  useEffect(() => {
+    if (prefilledCustomerId) {
+      setValue('customerId', prefilledCustomerId, { shouldValidate: true })
+    }
+  }, [prefilledCustomerId, setValue])
 
   const {
     data: services,
@@ -49,15 +63,38 @@ export function TreatmentPlanCreatePage() {
     enabled: Boolean(branchId),
   })
 
+  const {
+    data: customers,
+    isLoading: isLoadingCustomers,
+    isError: isCustomersError,
+  } = useQuery({
+    queryKey: ['customers', branchId],
+    queryFn: () => getCustomers(branchId),
+    enabled: Boolean(branchId),
+  })
+
+  const filteredCustomers = useMemo(() => {
+    const keyword = customerSearch.trim().toLowerCase()
+    if (!customers) return []
+    if (!keyword) return customers
+    return customers.filter((customer) =>
+      customer.name.toLowerCase().includes(keyword)
+      || customer.phone.toLowerCase().includes(keyword)
+      || customer.id.toLowerCase().includes(keyword),
+    )
+  }, [customerSearch, customers])
+
+  const selectedCustomer = customers?.find((customer) => customer.id === selectedCustomerId)
+
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
       createTreatmentPlan({
-        branchId: values.branchId,
+        branchId,
         customerId: values.customerId,
         serviceIds: values.serviceIds,
       }),
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['treatment-plans', DEFAULT_BRANCH_ID] })
+      await queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] })
       navigate(`/treatment-plans/${data.id}`)
     },
   })
@@ -65,25 +102,62 @@ export function TreatmentPlanCreatePage() {
   return (
     <PageCard
       title="Create treatment plan"
-      description="Create a treatment plan by selecting a customer and one or more services from the current branch catalog."
+      description="Create a treatment plan from the signed-in user's branch by selecting a customer and one or more services."
     >
-      <form className="grid gap-5 md:max-w-3xl" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-        <div>
-          <label className="mb-2 block text-sm text-slate-300">Branch ID</label>
-          <input
-            {...register('branchId')}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-          />
+      <form className="grid gap-6 md:max-w-4xl" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <p className="text-sm text-slate-400">Branch context</p>
+          <p className="mt-2 break-all text-sm text-white">{branchId}</p>
+          <p className="mt-2 text-xs text-slate-500">Taken automatically from the signed-in user session.</p>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm text-slate-300">Customer ID</label>
-          <input
-            {...register('customerId')}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-          />
-          {errors.customerId ? <p className="mt-2 text-sm text-rose-400">{errors.customerId.message}</p> : null}
+        <div className="grid gap-4 md:grid-cols-[1.1fr_1.9fr]">
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Find customer</label>
+            <input
+              {...register('customerSearch')}
+              placeholder="Search by name, phone, or customer ID"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+            {isLoadingCustomers ? <p className="mt-2 text-sm text-slate-400">Loading customers...</p> : null}
+            {isCustomersError ? <p className="mt-2 text-sm text-rose-400">Failed to load customers.</p> : null}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Customer picker</label>
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/40 p-2">
+              {filteredCustomers.map((customer) => {
+                const checked = customer.id === selectedCustomerId
+                return (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    onClick={() => setValue('customerId', customer.id, { shouldValidate: true })}
+                    className={`mb-2 w-full rounded-xl border px-4 py-3 text-left last:mb-0 ${
+                      checked ? 'border-cyan-400 bg-cyan-950/20' : 'border-slate-700 bg-slate-950/40 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="font-medium text-white">{customer.name || 'Unnamed customer'}</div>
+                    <div className="mt-1 text-sm text-slate-400">{customer.phone}</div>
+                    <div className="mt-1 break-all text-xs text-slate-500">{customer.id}</div>
+                  </button>
+                )
+              })}
+              {!isLoadingCustomers && filteredCustomers.length === 0 ? (
+                <p className="px-2 py-3 text-sm text-slate-500">No customers match this branch search.</p>
+              ) : null}
+            </div>
+            {errors.customerId ? <p className="mt-2 text-sm text-rose-400">{errors.customerId.message}</p> : null}
+          </div>
         </div>
+
+        {selectedCustomer ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <p className="text-sm text-slate-400">Selected customer</p>
+            <p className="mt-2 text-white">{selectedCustomer.name || 'Unnamed customer'} · {selectedCustomer.phone}</p>
+            <p className="mt-1 break-all text-xs text-slate-500">{selectedCustomer.id}</p>
+          </div>
+        ) : null}
 
         <div>
           <div className="mb-2 flex items-center justify-between gap-3">

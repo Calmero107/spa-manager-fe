@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { getTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
@@ -10,6 +11,8 @@ const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-11
 
 export function TreatmentPlanDetailPage() {
   const { planId = '' } = useParams()
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
   const queryClient = useQueryClient()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['treatment-plan-detail', planId],
@@ -27,7 +30,7 @@ export function TreatmentPlanDetailPage() {
         .then((res) => res.data.data),
     onSuccess: async (updated) => {
       queryClient.setQueryData(['treatment-plan-detail', planId], updated)
-      await queryClient.invalidateQueries({ queryKey: ['treatment-plans', DEFAULT_BRANCH_ID] })
+      await queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] })
     },
   })
 

@@ -2,14 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getTreatmentPlans } from '@/features/treatment-plan/services/treatment-plan.api'
 
 const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
 
 export function TreatmentPlansPage() {
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['treatment-plans', DEFAULT_BRANCH_ID],
-    queryFn: () => getTreatmentPlans(DEFAULT_BRANCH_ID),
+    queryKey: ['treatment-plans', branchId],
+    queryFn: () => getTreatmentPlans(branchId),
+    enabled: Boolean(branchId),
   })
 
   return (
@@ -18,7 +23,7 @@ export function TreatmentPlansPage() {
       description="Browse treatment plans for the current branch, inspect generated sessions, and navigate into planning details."
     >
       <div className="mb-5 flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-400">Current branch: {DEFAULT_BRANCH_ID}</p>
+        <p className="text-sm text-slate-400">Current branch: {branchId}</p>
         <Link
           to="/treatment-plans/new"
           className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300"
