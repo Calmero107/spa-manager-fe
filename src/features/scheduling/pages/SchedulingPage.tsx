@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { SchedulingResultCard } from '@/features/scheduling/components/SchedulingResultCard'
 import { api } from '@/lib/api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
@@ -13,9 +14,9 @@ const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-11
 const DEFAULT_SESSION_ID = import.meta.env.VITE_DEFAULT_SESSION_ID ?? '88888888-8888-8888-8888-888888888888'
 const DEFAULT_STAFF_ID = import.meta.env.VITE_DEFAULT_STAFF_ID ?? '22222222-2222-2222-2222-222222222222'
 
-async function querySlots(sessionId: string) {
+async function querySlots(branchId: string, sessionId: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
-    branchId: DEFAULT_BRANCH_ID,
+    branchId,
     sessionId,
     preferredStaffId: DEFAULT_STAFF_ID,
     dateFrom: '2026-04-15',
@@ -24,20 +25,20 @@ async function querySlots(sessionId: string) {
   return response.data.data
 }
 
-async function lockSlot(sessionId: string, slotId: string) {
+async function lockSlot(branchId: string, sessionId: string, slotId: string) {
   const response = await api.post<ApiResponse<SchedulingLockResponse>>('/scheduling/slots/lock', {
-    branchId: DEFAULT_BRANCH_ID,
+    branchId,
     sessionId,
     slotId,
   })
   return response.data.data
 }
 
-async function scheduleSession(sessionId: string, payload: { slotId: string; lockId: string }) {
+async function scheduleSession(branchId: string, sessionId: string, payload: { slotId: string; lockId: string }) {
   const response = await api.post<ApiResponse<ScheduleSessionResponse>>(
     `/sessions/${sessionId}/schedule`,
     {
-      branchId: DEFAULT_BRANCH_ID,
+      branchId,
       lockId: payload.lockId,
       slotId: payload.slotId,
       overrideGapRule: false,
@@ -55,6 +56,8 @@ async function scheduleSession(sessionId: string, payload: { slotId: string; loc
 export function SchedulingPage() {
   const [searchParams] = useSearchParams()
   const persistedFlow = appointmentFlowStorage.get()
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
   const [sessionId] = useState(
     searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID,
   )
@@ -65,7 +68,7 @@ export function SchedulingPage() {
   const [scheduledResult, setScheduledResult] = useState<ScheduleSessionResponse | null>(null)
 
   const queryMutation = useMutation({
-    mutationFn: () => querySlots(sessionId),
+    mutationFn: () => querySlots(branchId, sessionId),
     onSuccess: () => {
       setSelectedSlot(null)
       setLastLock(null)
@@ -75,7 +78,7 @@ export function SchedulingPage() {
   })
 
   const lockMutation = useMutation({
-    mutationFn: (slotId: string) => lockSlot(sessionId, slotId),
+    mutationFn: (slotId: string) => lockSlot(branchId, sessionId, slotId),
     onSuccess: (data) => {
       setLastLock(data)
       setScheduledResult(null)
@@ -83,7 +86,7 @@ export function SchedulingPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(sessionId, payload),
+    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(branchId, sessionId, payload),
     onSuccess: (data) => {
       setScheduledResult(data)
       appointmentFlowStorage.set({
@@ -128,8 +131,7 @@ export function SchedulingPage() {
       <PageCard title="Scheduling Playground" description="End-to-end FE mapping for query → lock → schedule session.">
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
-            Using <span className="font-mono text-slate-200">sessionId={sessionId}</span> for all scheduling calls on this screen
-            (override by opening from Treatment Plan detail or manually editing the URL query).
+            Using <span className="font-mono text-slate-200">branchId={branchId}</span> and <span className="font-mono text-slate-200">sessionId={sessionId}</span> for scheduling calls on this screen.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -218,6 +220,7 @@ export function SchedulingPage() {
 
       <PageCard title="Current FE notes" description="Current scheduling state and operator reminders.">
         <ul className="space-y-2 text-sm text-slate-300">
+          <li>- Scheduling now uses branchId from the signed-in user session instead of a hardcoded branch.</li>
           <li>- After schedule succeeds, keep the returned appointment ID for cancel/reschedule/check-in flows.</li>
           <li>- The backend requires `X-Request-Id` for write APIs like schedule/cancel/reschedule/check-in/complete.</li>
           <li>- If lock countdown reaches 0, query + lock again before scheduling.</li>
