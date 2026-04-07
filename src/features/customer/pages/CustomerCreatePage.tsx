@@ -4,12 +4,12 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { createCustomer } from '@/features/customer/services/customer.api'
 
 const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
 
 const schema = z.object({
-  branchId: z.string().min(1),
   phone: z.string().min(1, 'Phone is required'),
   name: z.string().min(1, 'Name is required'),
 })
@@ -19,6 +19,8 @@ type FormValues = z.infer<typeof schema>
 export function CustomerCreatePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
   const {
     register,
     handleSubmit,
@@ -26,26 +28,26 @@ export function CustomerCreatePage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      branchId: DEFAULT_BRANCH_ID,
       phone: '',
       name: '',
     },
   })
 
   const mutation = useMutation({
-    mutationFn: createCustomer,
+    mutationFn: (values: FormValues) => createCustomer({ ...values, branchId }),
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['customers', DEFAULT_BRANCH_ID] })
+      await queryClient.invalidateQueries({ queryKey: ['customers', branchId] })
       navigate(`/customers/${data.id}`)
     },
   })
 
   return (
-    <PageCard title="Create customer" description="Mapped to POST /customers.">
+    <PageCard title="Create customer" description="Create a customer in the signed-in user's current branch.">
       <form className="grid gap-5 md:max-w-xl" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-        <div>
-          <label className="mb-2 block text-sm text-slate-300">Branch ID</label>
-          <input {...register('branchId')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <p className="text-sm text-slate-400">Branch context</p>
+          <p className="mt-2 break-all text-sm text-white">{branchId}</p>
+          <p className="mt-2 text-xs text-slate-500">Taken automatically from the signed-in user session.</p>
         </div>
 
         <div>

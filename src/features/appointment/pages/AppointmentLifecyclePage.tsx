@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/lib/api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
@@ -12,31 +13,31 @@ const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-11
 const DEFAULT_SESSION_ID = import.meta.env.VITE_DEFAULT_SESSION_ID ?? '88888888-8888-8888-8888-888888888888'
 const DEFAULT_STAFF_ID = import.meta.env.VITE_DEFAULT_STAFF_ID ?? '22222222-2222-2222-2222-222222222222'
 
-async function querySlots() {
+async function querySlots(branchId: string, sessionId: string, preferredStaffId: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
-    branchId: DEFAULT_BRANCH_ID,
-    sessionId: DEFAULT_SESSION_ID,
-    preferredStaffId: DEFAULT_STAFF_ID,
+    branchId,
+    sessionId,
+    preferredStaffId,
     dateFrom: '2026-04-15',
     dateTo: '2026-04-17',
   })
   return response.data.data
 }
 
-async function lockSlot(slotId: string) {
+async function lockSlot(branchId: string, sessionId: string, slotId: string) {
   const response = await api.post<ApiResponse<SchedulingLockResponse>>('/scheduling/slots/lock', {
-    branchId: DEFAULT_BRANCH_ID,
-    sessionId: DEFAULT_SESSION_ID,
+    branchId,
+    sessionId,
     slotId,
   })
   return response.data.data
 }
 
-async function cancelAppointment(appointmentId: string) {
+async function cancelAppointment(branchId: string, appointmentId: string) {
   const response = await api.post<ApiResponse<{ appointmentId: string; appointmentStatus: string; sessionStatus: string }>>(
     `/appointments/${appointmentId}/cancel`,
     {
-      branchId: DEFAULT_BRANCH_ID,
+      branchId,
       reason: 'customer requested cancel',
       applyRefund: false,
     },
@@ -49,10 +50,10 @@ async function cancelAppointment(appointmentId: string) {
   return response.data.data
 }
 
-async function checkInAppointment(appointmentId: string) {
+async function checkInAppointment(branchId: string, appointmentId: string) {
   const response = await api.post<ApiResponse<{ appointmentId: string; appointmentStatus: string; sessionStatus: string }>>(
     `/appointments/${appointmentId}/check-in`,
-    { branchId: DEFAULT_BRANCH_ID },
+    { branchId },
     {
       headers: {
         'X-Request-Id': createRequestId('checkin'),
@@ -62,12 +63,12 @@ async function checkInAppointment(appointmentId: string) {
   return response.data.data
 }
 
-async function completeSession(sessionId: string) {
+async function completeSession(branchId: string, technicianId: string, sessionId: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; sessionStatus: string; appointmentStatus: string }>>(
     `/sessions/${sessionId}/complete`,
     {
-      branchId: DEFAULT_BRANCH_ID,
-      technicianId: DEFAULT_STAFF_ID,
+      branchId,
+      technicianId,
       resultNote: 'treatment completed successfully',
     },
     {
@@ -79,11 +80,11 @@ async function completeSession(sessionId: string) {
   return response.data.data
 }
 
-async function rescheduleAppointment(payload: { appointmentId: string; lockId: string; slotId: string }) {
+async function rescheduleAppointment(branchId: string, payload: { appointmentId: string; lockId: string; slotId: string }) {
   const response = await api.post<ApiResponse<ScheduleSessionResponse & { appointmentStatus?: string; sessionStatus?: string }>>(
     `/appointments/${payload.appointmentId}/reschedule`,
     {
-      branchId: DEFAULT_BRANCH_ID,
+      branchId,
       newLockId: payload.lockId,
       newSlotId: payload.slotId,
       reason: 'customer requested change',
@@ -100,6 +101,9 @@ async function rescheduleAppointment(payload: { appointmentId: string; lockId: s
 export function AppointmentLifecyclePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const persistedFlow = appointmentFlowStorage.get()
+  const { user } = useAuth()
+  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const staffId = user?.staffId ?? DEFAULT_STAFF_ID
   const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? persistedFlow?.appointmentId ?? '')
   const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID)
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
@@ -117,12 +121,12 @@ export function AppointmentLifecyclePage() {
     }
   }, [appointmentId, searchParams, sessionId, setSearchParams])
 
-  const cancelMutation = useMutation({ mutationFn: cancelAppointment })
-  const checkInMutation = useMutation({ mutationFn: checkInAppointment })
-  const completeMutation = useMutation({ mutationFn: completeSession })
+  const cancelMutation = useMutation({ mutationFn: (id: string) => cancelAppointment(branchId, id) })
+  const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId, id) })
+  const completeMutation = useMutation({ mutationFn: (id: string) => completeSession(branchId, staffId, id) })
 
   const queryMutation = useMutation({
-    mutationFn: querySlots,
+    mutationFn: () => querySlots(branchId, sessionId, staffId),
     onSuccess: () => {
       setSelectedSlot(null)
       setLockInfo(null)
@@ -131,12 +135,12 @@ export function AppointmentLifecyclePage() {
   })
 
   const lockMutation = useMutation({
-    mutationFn: lockSlot,
+    mutationFn: (slotId: string) => lockSlot(branchId, sessionId, slotId),
     onSuccess: (data) => setLockInfo(data),
   })
 
   const rescheduleMutation = useMutation({
-    mutationFn: rescheduleAppointment,
+    mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) => rescheduleAppointment(branchId, payload),
     onSuccess: (data) => {
       setAppointmentId(data.appointmentId)
       setSessionId(data.sessionId)
@@ -176,6 +180,11 @@ export function AppointmentLifecyclePage() {
           >
             Open appointment detail page
           </a>
+        </div>
+        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
+          <p>
+            Using <span className="font-mono text-slate-200">branchId={branchId}</span> and <span className="font-mono text-slate-200">staffId={staffId || 'null'}</span> from the signed-in session.
+          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
