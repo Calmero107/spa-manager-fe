@@ -9,17 +9,16 @@ import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-const DEFAULT_SESSION_ID = import.meta.env.VITE_DEFAULT_SESSION_ID ?? '88888888-8888-8888-8888-888888888888'
-const DEFAULT_STAFF_ID = import.meta.env.VITE_DEFAULT_STAFF_ID ?? '22222222-2222-2222-2222-222222222222'
+const DEFAULT_DATE_FROM = '2026-04-15'
+const DEFAULT_DATE_TO = '2026-04-17'
 
-async function querySlots(branchId: string, sessionId: string, preferredStaffId: string) {
+async function querySlots(branchId: string, sessionId: string, preferredStaffId?: string | null) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
     branchId,
     sessionId,
-    preferredStaffId,
-    dateFrom: '2026-04-15',
-    dateTo: '2026-04-17',
+    preferredStaffId: preferredStaffId || null,
+    dateFrom: DEFAULT_DATE_FROM,
+    dateTo: DEFAULT_DATE_TO,
   })
   return response.data.data
 }
@@ -63,12 +62,12 @@ async function checkInAppointment(branchId: string, appointmentId: string) {
   return response.data.data
 }
 
-async function completeSession(branchId: string, technicianId: string, sessionId: string) {
+async function completeSession(branchId: string, technicianId: string | null | undefined, sessionId: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; sessionStatus: string; appointmentStatus: string }>>(
     `/sessions/${sessionId}/complete`,
     {
       branchId,
-      technicianId,
+      technicianId: technicianId || null,
       resultNote: 'treatment completed successfully',
     },
     {
@@ -102,10 +101,10 @@ export function AppointmentLifecyclePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const persistedFlow = appointmentFlowStorage.get()
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
-  const staffId = user?.staffId ?? DEFAULT_STAFF_ID
+  const branchId = user?.branchId
+  const staffId = user?.staffId
   const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? persistedFlow?.appointmentId ?? '')
-  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID)
+  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lockInfo, setLockInfo] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
@@ -113,7 +112,9 @@ export function AppointmentLifecyclePage() {
   useEffect(() => {
     const next = new URLSearchParams(searchParams)
     if (appointmentId) next.set('appointmentId', appointmentId)
+    else next.delete('appointmentId')
     if (sessionId) next.set('sessionId', sessionId)
+    else next.delete('sessionId')
     setSearchParams(next, { replace: true })
 
     if (appointmentId && sessionId) {
@@ -121,12 +122,12 @@ export function AppointmentLifecyclePage() {
     }
   }, [appointmentId, searchParams, sessionId, setSearchParams])
 
-  const cancelMutation = useMutation({ mutationFn: (id: string) => cancelAppointment(branchId, id) })
-  const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId, id) })
-  const completeMutation = useMutation({ mutationFn: (id: string) => completeSession(branchId, staffId, id) })
+  const cancelMutation = useMutation({ mutationFn: (id: string) => cancelAppointment(branchId!, id) })
+  const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId!, id) })
+  const completeMutation = useMutation({ mutationFn: (id: string) => completeSession(branchId!, staffId, id) })
 
   const queryMutation = useMutation({
-    mutationFn: () => querySlots(branchId, sessionId, staffId),
+    mutationFn: () => querySlots(branchId!, sessionId, staffId),
     onSuccess: () => {
       setSelectedSlot(null)
       setLockInfo(null)
@@ -135,12 +136,12 @@ export function AppointmentLifecyclePage() {
   })
 
   const lockMutation = useMutation({
-    mutationFn: (slotId: string) => lockSlot(branchId, sessionId, slotId),
+    mutationFn: (slotId: string) => lockSlot(branchId!, sessionId, slotId),
     onSuccess: (data) => setLockInfo(data),
   })
 
   const rescheduleMutation = useMutation({
-    mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) => rescheduleAppointment(branchId, payload),
+    mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) => rescheduleAppointment(branchId!, payload),
     onSuccess: (data) => {
       setAppointmentId(data.appointmentId)
       setSessionId(data.sessionId)
@@ -165,6 +166,8 @@ export function AppointmentLifecyclePage() {
 
   const slots = queryMutation.data?.slots ?? []
   const canReschedule = Boolean(appointmentId && selectedSlot && lockInfo && (remainingSeconds ?? 0) > 0)
+  const hasBranchContext = Boolean(branchId)
+  const hasSessionContext = Boolean(sessionId)
 
   const latestActionSummary = useMemo(() => {
     return cancelMutation.data ?? checkInMutation.data ?? completeMutation.data ?? rescheduleMutation.data ?? null
@@ -183,9 +186,16 @@ export function AppointmentLifecyclePage() {
         </div>
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
-            Using <span className="font-mono text-slate-200">branchId={branchId}</span> and <span className="font-mono text-slate-200">staffId={staffId || 'null'}</span> from the signed-in session.
+            Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span>,{' '}
+            <span className="font-mono text-slate-200">staffId={staffId ?? 'optional'}</span> and{' '}
+            <span className="font-mono text-slate-200">sessionId={sessionId || 'missing'}</span> from active context.
           </p>
         </div>
+        {!hasBranchContext ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Missing branch context. Please sign in with a user that belongs to a branch before using appointment lifecycle actions.
+          </div>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm text-slate-300">Appointment ID</label>
@@ -210,7 +220,7 @@ export function AppointmentLifecyclePage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={!appointmentId || cancelMutation.isPending}
+            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext}
             onClick={() => cancelMutation.mutate(appointmentId)}
             className="rounded-xl border border-rose-700 px-4 py-3 text-sm text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -219,7 +229,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!appointmentId || checkInMutation.isPending}
+            disabled={!appointmentId || checkInMutation.isPending || !hasBranchContext}
             onClick={() => checkInMutation.mutate(appointmentId)}
             className="rounded-xl border border-amber-700 px-4 py-3 text-sm text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -228,7 +238,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!sessionId || completeMutation.isPending}
+            disabled={!sessionId || completeMutation.isPending || !hasBranchContext}
             onClick={() => completeMutation.mutate(sessionId)}
             className="rounded-xl border border-emerald-700 px-4 py-3 text-sm text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -250,11 +260,17 @@ export function AppointmentLifecyclePage() {
       </PageCard>
 
       <PageCard title="Reschedule flow" description="Query new slots, lock one slot, then reschedule the current appointment.">
+        {!hasSessionContext ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Missing session context. Open this page from a scheduling/treatment-plan flow or paste a valid session ID.
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300"
+            disabled={!hasBranchContext || !hasSessionContext}
+            className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Query new slots
           </button>
@@ -262,7 +278,7 @@ export function AppointmentLifecyclePage() {
           {selectedSlot ? (
             <button
               type="button"
-              disabled={lockMutation.isPending}
+              disabled={lockMutation.isPending || !hasBranchContext || !hasSessionContext}
               onClick={() => lockMutation.mutate(selectedSlot.slotId)}
               className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -273,7 +289,7 @@ export function AppointmentLifecyclePage() {
           {canReschedule && selectedSlot && lockInfo ? (
             <button
               type="button"
-              disabled={rescheduleMutation.isPending}
+              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext}
               onClick={() => rescheduleMutation.mutate({ appointmentId, lockId: lockInfo.lockId, slotId: selectedSlot.slotId })}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >

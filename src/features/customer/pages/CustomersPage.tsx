@@ -4,15 +4,13 @@ import { PageCard } from '@/components/ui/PageCard'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getCustomers } from '@/features/customer/services/customer.api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-
 export function CustomersPage() {
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const branchId = user?.branchId
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['customers', branchId],
-    queryFn: () => getCustomers(branchId),
+    queryFn: () => getCustomers(branchId!),
     enabled: Boolean(branchId),
   })
 
@@ -24,6 +22,7 @@ export function CustomersPage() {
           Create customer
         </Link>
       </div>
+      {!branchId ? <p className="text-amber-300">Missing branch context from signed-in user.</p> : null}
       {isLoading ? <p className="text-slate-400">Loading customers...</p> : null}
       {error ? <p className="text-rose-400">Failed to load customers.</p> : null}
       <div className="overflow-hidden rounded-xl border border-slate-800">

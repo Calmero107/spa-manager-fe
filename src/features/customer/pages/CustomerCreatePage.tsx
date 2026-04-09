@@ -7,8 +7,6 @@ import { PageCard } from '@/components/ui/PageCard'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { createCustomer } from '@/features/customer/services/customer.api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-
 const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
   name: z.string().min(1, 'Name is required'),
@@ -20,7 +18,7 @@ export function CustomerCreatePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const branchId = user?.branchId
   const {
     register,
     handleSubmit,
@@ -34,7 +32,7 @@ export function CustomerCreatePage() {
   })
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => createCustomer({ ...values, branchId }),
+    mutationFn: (values: FormValues) => createCustomer({ ...values, branchId: branchId! }),
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['customers', branchId] })
       navigate(`/customers/${data.id}`)
@@ -62,11 +60,12 @@ export function CustomerCreatePage() {
           {errors.name ? <p className="mt-2 text-sm text-rose-400">{errors.name.message}</p> : null}
         </div>
 
+        {!branchId ? <p className="text-sm text-amber-300">Missing branch context from signed-in user.</p> : null}
         {mutation.isError ? <p className="text-sm text-rose-400">Failed to create customer.</p> : null}
 
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || !branchId}
           className="rounded-xl bg-cyan-400 px-4 py-3 font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? 'Creating...' : 'Create customer'}

@@ -10,17 +10,16 @@ import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-const DEFAULT_SESSION_ID = import.meta.env.VITE_DEFAULT_SESSION_ID ?? '88888888-8888-8888-8888-888888888888'
-const DEFAULT_STAFF_ID = import.meta.env.VITE_DEFAULT_STAFF_ID ?? '22222222-2222-2222-2222-222222222222'
+const DEFAULT_DATE_FROM = '2026-04-15'
+const DEFAULT_DATE_TO = '2026-04-17'
 
-async function querySlots(branchId: string, sessionId: string) {
+async function querySlots(branchId: string, sessionId: string, preferredStaffId?: string | null) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
     branchId,
     sessionId,
-    preferredStaffId: DEFAULT_STAFF_ID,
-    dateFrom: '2026-04-15',
-    dateTo: '2026-04-17',
+    preferredStaffId: preferredStaffId || null,
+    dateFrom: DEFAULT_DATE_FROM,
+    dateTo: DEFAULT_DATE_TO,
   })
   return response.data.data
 }
@@ -57,10 +56,9 @@ export function SchedulingPage() {
   const [searchParams] = useSearchParams()
   const persistedFlow = appointmentFlowStorage.get()
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
-  const [sessionId] = useState(
-    searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? DEFAULT_SESSION_ID,
-  )
+  const branchId = user?.branchId
+  const staffId = user?.staffId
+  const [sessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
 
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lastLock, setLastLock] = useState<SchedulingLockResponse | null>(null)
@@ -68,7 +66,7 @@ export function SchedulingPage() {
   const [scheduledResult, setScheduledResult] = useState<ScheduleSessionResponse | null>(null)
 
   const queryMutation = useMutation({
-    mutationFn: () => querySlots(branchId, sessionId),
+    mutationFn: () => querySlots(branchId!, sessionId, staffId),
     onSuccess: () => {
       setSelectedSlot(null)
       setLastLock(null)
@@ -78,7 +76,7 @@ export function SchedulingPage() {
   })
 
   const lockMutation = useMutation({
-    mutationFn: (slotId: string) => lockSlot(branchId, sessionId, slotId),
+    mutationFn: (slotId: string) => lockSlot(branchId!, sessionId, slotId),
     onSuccess: (data) => {
       setLastLock(data)
       setScheduledResult(null)
@@ -86,7 +84,7 @@ export function SchedulingPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(branchId, sessionId, payload),
+    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(branchId!, sessionId, payload),
     onSuccess: (data) => {
       setScheduledResult(data)
       appointmentFlowStorage.set({
@@ -114,6 +112,7 @@ export function SchedulingPage() {
 
   const slots = queryMutation.data?.slots ?? []
   const canSchedule = Boolean(selectedSlot && lastLock && (remainingSeconds ?? 0) > 0)
+  const hasRequiredContext = Boolean(branchId && sessionId)
 
   const selectedSummary = useMemo(() => {
     if (!selectedSlot) {
@@ -131,14 +130,24 @@ export function SchedulingPage() {
       <PageCard title="Scheduling Playground" description="End-to-end FE mapping for query → lock → schedule session.">
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
-            Using <span className="font-mono text-slate-200">branchId={branchId}</span> and <span className="font-mono text-slate-200">sessionId={sessionId}</span> for scheduling calls on this screen.
+            Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span>,{' '}
+            <span className="font-mono text-slate-200">staffId={staffId ?? 'optional'}</span> and{' '}
+            <span className="font-mono text-slate-200">sessionId={sessionId || 'missing'}</span> for scheduling calls on this screen.
           </p>
         </div>
+
+        {!hasRequiredContext ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Missing scheduling context. Please open this page from Treatment Plan detail or ensure the signed-in user has a branch.
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300"
+            disabled={!hasRequiredContext}
+            className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Query available slots
           </button>
@@ -147,7 +156,7 @@ export function SchedulingPage() {
             <button
               type="button"
               onClick={() => lockMutation.mutate(selectedSlot.slotId)}
-              disabled={lockMutation.isPending}
+              disabled={lockMutation.isPending || !hasRequiredContext}
               className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {lockMutation.isPending ? 'Locking...' : 'Lock selected slot'}
@@ -158,7 +167,7 @@ export function SchedulingPage() {
             <button
               type="button"
               onClick={() => scheduleMutation.mutate({ slotId: selectedSlot.slotId, lockId: lastLock.lockId })}
-              disabled={scheduleMutation.isPending}
+              disabled={scheduleMutation.isPending || !hasRequiredContext}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule session'}
@@ -220,7 +229,8 @@ export function SchedulingPage() {
 
       <PageCard title="Current FE notes" description="Current scheduling state and operator reminders.">
         <ul className="space-y-2 text-sm text-slate-300">
-          <li>- Scheduling now uses branchId from the signed-in user session instead of a hardcoded branch.</li>
+          <li>- Scheduling uses branchId from the signed-in user session and sessionId from treatment-plan-driven navigation.</li>
+          <li>- Preferred staff falls back to optional/null when the signed-in user has no staffId.</li>
           <li>- After schedule succeeds, keep the returned appointment ID for cancel/reschedule/check-in flows.</li>
           <li>- The backend requires `X-Request-Id` for write APIs like schedule/cancel/reschedule/check-in/complete.</li>
           <li>- If lock countdown reaches 0, query + lock again before scheduling.</li>

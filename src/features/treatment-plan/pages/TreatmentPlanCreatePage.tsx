@@ -10,8 +10,6 @@ import { getCustomers } from '@/features/customer/services/customer.api'
 import { getServices } from '@/features/service/services/service.api'
 import { createTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-
 const schema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
   serviceIds: z.array(z.string()).min(1, 'Select at least one service'),
@@ -25,7 +23,7 @@ export function TreatmentPlanCreatePage() {
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const branchId = user?.branchId
   const prefilledCustomerId = searchParams.get('customerId') ?? ''
 
   const {
@@ -59,7 +57,7 @@ export function TreatmentPlanCreatePage() {
     isError: isServicesError,
   } = useQuery({
     queryKey: ['services', branchId],
-    queryFn: () => getServices(branchId),
+    queryFn: () => getServices(branchId!),
     enabled: Boolean(branchId),
   })
 
@@ -69,7 +67,7 @@ export function TreatmentPlanCreatePage() {
     isError: isCustomersError,
   } = useQuery({
     queryKey: ['customers', branchId],
-    queryFn: () => getCustomers(branchId),
+    queryFn: () => getCustomers(branchId!),
     enabled: Boolean(branchId),
   })
 
@@ -89,7 +87,7 @@ export function TreatmentPlanCreatePage() {
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
       createTreatmentPlan({
-        branchId,
+        branchId: branchId!,
         customerId: values.customerId,
         serviceIds: values.serviceIds,
       }),
@@ -207,11 +205,12 @@ export function TreatmentPlanCreatePage() {
           {errors.serviceIds ? <p className="mt-2 text-sm text-rose-400">{errors.serviceIds.message}</p> : null}
         </div>
 
+        {!branchId ? <p className="text-sm text-amber-300">Missing branch context from signed-in user.</p> : null}
         {mutation.isError ? <p className="text-sm text-rose-400">Failed to create treatment plan.</p> : null}
 
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || !branchId}
           className="rounded-xl bg-cyan-400 px-4 py-3 font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? 'Creating...' : 'Create treatment plan'}

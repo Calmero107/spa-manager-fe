@@ -7,12 +7,10 @@ import { getTreatmentPlan } from '@/features/treatment-plan/services/treatment-p
 import { api } from '@/lib/api'
 import type { ApiResponse, TreatmentPlan } from '@/types/api'
 
-const DEFAULT_BRANCH_ID = import.meta.env.VITE_DEFAULT_BRANCH_ID ?? '11111111-1111-1111-1111-111111111111'
-
 export function TreatmentPlanDetailPage() {
   const { planId = '' } = useParams()
   const { user } = useAuth()
-  const branchId = user?.branchId ?? DEFAULT_BRANCH_ID
+  const branchId = user?.branchId
   const queryClient = useQueryClient()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['treatment-plan-detail', planId],
