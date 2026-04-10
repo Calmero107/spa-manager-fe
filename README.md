@@ -40,6 +40,7 @@ npm run dev
 
 ## Important notes
 - The frontend assumes the backend/dev seed is already available.
+- Branch / staff / session context for core flows is now expected to come from authenticated user data and navigation context, not hardcoded default UUIDs.
 - Default credentials from backend seed:
   - username: `owner1`
   - password: `password`
