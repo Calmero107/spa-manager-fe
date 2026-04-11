@@ -9,16 +9,23 @@ import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
-const DEFAULT_DATE_FROM = '2026-04-15'
-const DEFAULT_DATE_TO = '2026-04-17'
+function getTodayDateInput() {
+  return new Date().toISOString().slice(0, 10)
+}
 
-async function querySlots(branchId: string, sessionId: string, preferredStaffId?: string | null) {
+function getDateOffsetInput(offsetDays: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+async function querySlots(branchId: string, payload: { sessionId: string; preferredStaffId?: string | null; dateFrom: string; dateTo: string }) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
     branchId,
-    sessionId,
-    preferredStaffId: preferredStaffId || null,
-    dateFrom: DEFAULT_DATE_FROM,
-    dateTo: DEFAULT_DATE_TO,
+    sessionId: payload.sessionId,
+    preferredStaffId: payload.preferredStaffId || null,
+    dateFrom: payload.dateFrom,
+    dateTo: payload.dateTo,
   })
   return response.data.data
 }
@@ -32,13 +39,13 @@ async function lockSlot(branchId: string, sessionId: string, slotId: string) {
   return response.data.data
 }
 
-async function cancelAppointment(branchId: string, appointmentId: string) {
+async function cancelAppointment(branchId: string, appointmentId: string, payload: { reason: string; applyRefund: boolean }) {
   const response = await api.post<ApiResponse<{ appointmentId: string; appointmentStatus: string; sessionStatus: string }>>(
     `/appointments/${appointmentId}/cancel`,
     {
       branchId,
-      reason: 'customer requested cancel',
-      applyRefund: false,
+      reason: payload.reason,
+      applyRefund: payload.applyRefund,
     },
     {
       headers: {
@@ -62,13 +69,13 @@ async function checkInAppointment(branchId: string, appointmentId: string) {
   return response.data.data
 }
 
-async function completeSession(branchId: string, technicianId: string | null | undefined, sessionId: string) {
+async function completeSession(branchId: string, technicianId: string | null | undefined, sessionId: string, resultNote: string) {
   const response = await api.post<ApiResponse<{ sessionId: string; sessionStatus: string; appointmentStatus: string }>>(
     `/sessions/${sessionId}/complete`,
     {
       branchId,
       technicianId: technicianId || null,
-      resultNote: 'treatment completed successfully',
+      resultNote,
     },
     {
       headers: {
@@ -79,14 +86,14 @@ async function completeSession(branchId: string, technicianId: string | null | u
   return response.data.data
 }
 
-async function rescheduleAppointment(branchId: string, payload: { appointmentId: string; lockId: string; slotId: string }) {
+async function rescheduleAppointment(branchId: string, payload: { appointmentId: string; lockId: string; slotId: string; reason: string }) {
   const response = await api.post<ApiResponse<ScheduleSessionResponse & { appointmentStatus?: string; sessionStatus?: string }>>(
     `/appointments/${payload.appointmentId}/reschedule`,
     {
       branchId,
       newLockId: payload.lockId,
       newSlotId: payload.slotId,
-      reason: 'customer requested change',
+      reason: payload.reason,
     },
     {
       headers: {
@@ -105,9 +112,22 @@ export function AppointmentLifecyclePage() {
   const staffId = user?.staffId
   const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? persistedFlow?.appointmentId ?? '')
   const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
+  const [preferredStaffId, setPreferredStaffId] = useState(staffId ?? '')
+  const [dateFrom, setDateFrom] = useState(getTodayDateInput())
+  const [dateTo, setDateTo] = useState(getDateOffsetInput(2))
+  const [cancelReason, setCancelReason] = useState('customer requested cancel')
+  const [applyRefund, setApplyRefund] = useState(false)
+  const [completeResultNote, setCompleteResultNote] = useState('treatment completed successfully')
+  const [rescheduleReason, setRescheduleReason] = useState('customer requested change')
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lockInfo, setLockInfo] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!preferredStaffId && staffId) {
+      setPreferredStaffId(staffId)
+    }
+  }, [preferredStaffId, staffId])
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams)
@@ -122,12 +142,16 @@ export function AppointmentLifecyclePage() {
     }
   }, [appointmentId, searchParams, sessionId, setSearchParams])
 
-  const cancelMutation = useMutation({ mutationFn: (id: string) => cancelAppointment(branchId!, id) })
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => cancelAppointment(branchId!, id, { reason: cancelReason, applyRefund }),
+  })
   const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId!, id) })
-  const completeMutation = useMutation({ mutationFn: (id: string) => completeSession(branchId!, staffId, id) })
+  const completeMutation = useMutation({
+    mutationFn: (id: string) => completeSession(branchId!, staffId, id, completeResultNote),
+  })
 
   const queryMutation = useMutation({
-    mutationFn: () => querySlots(branchId!, sessionId, staffId),
+    mutationFn: () => querySlots(branchId!, { sessionId, preferredStaffId, dateFrom, dateTo }),
     onSuccess: () => {
       setSelectedSlot(null)
       setLockInfo(null)
@@ -141,7 +165,8 @@ export function AppointmentLifecyclePage() {
   })
 
   const rescheduleMutation = useMutation({
-    mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) => rescheduleAppointment(branchId!, payload),
+    mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) =>
+      rescheduleAppointment(branchId!, { ...payload, reason: rescheduleReason }),
     onSuccess: (data) => {
       setAppointmentId(data.appointmentId)
       setSessionId(data.sessionId)
@@ -196,6 +221,7 @@ export function AppointmentLifecyclePage() {
             Missing branch context. Please sign in with a user that belongs to a branch before using appointment lifecycle actions.
           </div>
         ) : null}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm text-slate-300">Appointment ID</label>
@@ -217,10 +243,33 @@ export function AppointmentLifecyclePage() {
           </div>
         </div>
 
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Cancel reason</label>
+            <textarea
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
+              className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+            <label className="mt-3 flex items-center gap-3 text-sm text-slate-300">
+              <input type="checkbox" checked={applyRefund} onChange={(event) => setApplyRefund(event.target.checked)} />
+              Apply refund
+            </label>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Complete result note</label>
+            <textarea
+              value={completeResultNote}
+              onChange={(event) => setCompleteResultNote(event.target.value)}
+              className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+        </div>
+
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext}
+            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext || !cancelReason.trim()}
             onClick={() => cancelMutation.mutate(appointmentId)}
             className="rounded-xl border border-rose-700 px-4 py-3 text-sm text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -238,7 +287,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!sessionId || completeMutation.isPending || !hasBranchContext}
+            disabled={!sessionId || completeMutation.isPending || !hasBranchContext || !completeResultNote.trim()}
             onClick={() => completeMutation.mutate(sessionId)}
             className="rounded-xl border border-emerald-700 px-4 py-3 text-sm text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -265,11 +314,51 @@ export function AppointmentLifecyclePage() {
             Missing session context. Open this page from a scheduling/treatment-plan flow or paste a valid session ID.
           </div>
         ) : null}
+
+        <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Preferred Staff ID</label>
+            <input
+              value={preferredStaffId}
+              onChange={(event) => setPreferredStaffId(event.target.value)}
+              placeholder="Optional staff ID"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Date From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Date To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Reschedule reason</label>
+            <input
+              value={rescheduleReason}
+              onChange={(event) => setRescheduleReason(event.target.value)}
+              placeholder="Reason for rescheduling"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasBranchContext || !hasSessionContext}
+            disabled={!hasBranchContext || !hasSessionContext || !dateFrom || !dateTo}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Query new slots
@@ -289,7 +378,7 @@ export function AppointmentLifecyclePage() {
           {canReschedule && selectedSlot && lockInfo ? (
             <button
               type="button"
-              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext}
+              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext || !rescheduleReason.trim()}
               onClick={() => rescheduleMutation.mutate({ appointmentId, lockId: lockInfo.lockId, slotId: selectedSlot.slotId })}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -10,16 +10,23 @@ import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
 import type { ApiResponse, AvailableSlot, ScheduleSessionResponse, SchedulingLockResponse } from '@/types/api'
 
-const DEFAULT_DATE_FROM = '2026-04-15'
-const DEFAULT_DATE_TO = '2026-04-17'
+function getTodayDateInput() {
+  return new Date().toISOString().slice(0, 10)
+}
 
-async function querySlots(branchId: string, sessionId: string, preferredStaffId?: string | null) {
+function getDateOffsetInput(offsetDays: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+async function querySlots(branchId: string, payload: { sessionId: string; preferredStaffId?: string | null; dateFrom: string; dateTo: string }) {
   const response = await api.post<ApiResponse<{ sessionId: string; slots: AvailableSlot[] }>>('/scheduling/slots/query', {
     branchId,
-    sessionId,
-    preferredStaffId: preferredStaffId || null,
-    dateFrom: DEFAULT_DATE_FROM,
-    dateTo: DEFAULT_DATE_TO,
+    sessionId: payload.sessionId,
+    preferredStaffId: payload.preferredStaffId || null,
+    dateFrom: payload.dateFrom,
+    dateTo: payload.dateTo,
   })
   return response.data.data
 }
@@ -33,15 +40,19 @@ async function lockSlot(branchId: string, sessionId: string, slotId: string) {
   return response.data.data
 }
 
-async function scheduleSession(branchId: string, sessionId: string, payload: { slotId: string; lockId: string }) {
+async function scheduleSession(
+  branchId: string,
+  sessionId: string,
+  payload: { slotId: string; lockId: string; overrideGapRule: boolean; overrideReason: string | null },
+) {
   const response = await api.post<ApiResponse<ScheduleSessionResponse>>(
     `/sessions/${sessionId}/schedule`,
     {
       branchId,
       lockId: payload.lockId,
       slotId: payload.slotId,
-      overrideGapRule: false,
-      overrideReason: null,
+      overrideGapRule: payload.overrideGapRule,
+      overrideReason: payload.overrideReason,
     },
     {
       headers: {
@@ -58,15 +69,26 @@ export function SchedulingPage() {
   const { user } = useAuth()
   const branchId = user?.branchId
   const staffId = user?.staffId
-  const [sessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
+  const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
+  const [preferredStaffId, setPreferredStaffId] = useState(staffId ?? '')
+  const [dateFrom, setDateFrom] = useState(getTodayDateInput())
+  const [dateTo, setDateTo] = useState(getDateOffsetInput(2))
+  const [overrideGapRule, setOverrideGapRule] = useState(false)
+  const [overrideReason, setOverrideReason] = useState('')
 
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null)
   const [lastLock, setLastLock] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const [scheduledResult, setScheduledResult] = useState<ScheduleSessionResponse | null>(null)
 
+  useEffect(() => {
+    if (!preferredStaffId && staffId) {
+      setPreferredStaffId(staffId)
+    }
+  }, [preferredStaffId, staffId])
+
   const queryMutation = useMutation({
-    mutationFn: () => querySlots(branchId!, sessionId, staffId),
+    mutationFn: () => querySlots(branchId!, { sessionId, preferredStaffId, dateFrom, dateTo }),
     onSuccess: () => {
       setSelectedSlot(null)
       setLastLock(null)
@@ -84,7 +106,12 @@ export function SchedulingPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: (payload: { slotId: string; lockId: string }) => scheduleSession(branchId!, sessionId, payload),
+    mutationFn: (payload: { slotId: string; lockId: string }) =>
+      scheduleSession(branchId!, sessionId, {
+        ...payload,
+        overrideGapRule,
+        overrideReason: overrideGapRule ? overrideReason || null : null,
+      }),
     onSuccess: (data) => {
       setScheduledResult(data)
       appointmentFlowStorage.set({
@@ -131,7 +158,7 @@ export function SchedulingPage() {
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
             Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span>,{' '}
-            <span className="font-mono text-slate-200">staffId={staffId ?? 'optional'}</span> and{' '}
+            <span className="font-mono text-slate-200">staffId={preferredStaffId || 'optional'}</span> and{' '}
             <span className="font-mono text-slate-200">sessionId={sessionId || 'missing'}</span> for scheduling calls on this screen.
           </p>
         </div>
@@ -142,11 +169,72 @@ export function SchedulingPage() {
           </div>
         ) : null}
 
+        <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Session ID</label>
+            <input
+              value={sessionId}
+              onChange={(event) => setSessionId(event.target.value)}
+              placeholder="Session ID"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Preferred Staff ID</label>
+            <input
+              value={preferredStaffId}
+              onChange={(event) => setPreferredStaffId(event.target.value)}
+              placeholder="Optional staff ID"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Date From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Date To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            />
+          </div>
+        </div>
+
+        <div className="mb-5 rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+          <label className="flex items-center gap-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={overrideGapRule}
+              onChange={(event) => setOverrideGapRule(event.target.checked)}
+            />
+            Override gap rule when scheduling
+          </label>
+          {overrideGapRule ? (
+            <div className="mt-3">
+              <label className="mb-2 block text-sm text-slate-300">Override Reason</label>
+              <textarea
+                value={overrideReason}
+                onChange={(event) => setOverrideReason(event.target.value)}
+                placeholder="Explain why the gap rule should be overridden"
+                className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+              />
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasRequiredContext}
+            disabled={!hasRequiredContext || !dateFrom || !dateTo}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Query available slots
@@ -167,7 +255,7 @@ export function SchedulingPage() {
             <button
               type="button"
               onClick={() => scheduleMutation.mutate({ slotId: selectedSlot.slotId, lockId: lastLock.lockId })}
-              disabled={scheduleMutation.isPending || !hasRequiredContext}
+              disabled={scheduleMutation.isPending || !hasRequiredContext || (overrideGapRule && !overrideReason.trim())}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule session'}
@@ -225,16 +313,6 @@ export function SchedulingPage() {
             )
           })}
         </div>
-      </PageCard>
-
-      <PageCard title="Current FE notes" description="Current scheduling state and operator reminders.">
-        <ul className="space-y-2 text-sm text-slate-300">
-          <li>- Scheduling uses branchId from the signed-in user session and sessionId from treatment-plan-driven navigation.</li>
-          <li>- Preferred staff falls back to optional/null when the signed-in user has no staffId.</li>
-          <li>- After schedule succeeds, keep the returned appointment ID for cancel/reschedule/check-in flows.</li>
-          <li>- The backend requires `X-Request-Id` for write APIs like schedule/cancel/reschedule/check-in/complete.</li>
-          <li>- If lock countdown reaches 0, query + lock again before scheduling.</li>
-        </ul>
       </PageCard>
     </div>
   )
