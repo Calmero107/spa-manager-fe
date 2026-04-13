@@ -129,7 +129,11 @@ export function SchedulingPage() {
 
     const tick = () => {
       const diffMs = new Date(lastLock.expiresAt).getTime() - Date.now()
-      setRemainingSeconds(Math.max(0, Math.ceil(diffMs / 1000)))
+      const seconds = Math.max(0, Math.ceil(diffMs / 1000))
+      setRemainingSeconds(seconds)
+      if (seconds === 0) {
+        setLastLock(null)
+      }
     }
 
     tick()
@@ -140,6 +144,7 @@ export function SchedulingPage() {
   const slots = queryMutation.data?.slots ?? []
   const canSchedule = Boolean(selectedSlot && lastLock && (remainingSeconds ?? 0) > 0)
   const hasRequiredContext = Boolean(branchId && sessionId)
+  const hasValidDateRange = Boolean(dateFrom && dateTo && dateFrom <= dateTo)
 
   const selectedSummary = useMemo(() => {
     if (!selectedSlot) {
@@ -166,6 +171,12 @@ export function SchedulingPage() {
         {!hasRequiredContext ? (
           <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
             Missing scheduling context. Please open this page from Treatment Plan detail or ensure the signed-in user has a branch.
+          </div>
+        ) : null}
+
+        {!hasValidDateRange ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Invalid date range. `Date To` must be the same as or later than `Date From`.
           </div>
         ) : null}
 
@@ -234,7 +245,7 @@ export function SchedulingPage() {
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasRequiredContext || !dateFrom || !dateTo}
+            disabled={!hasRequiredContext || !hasValidDateRange}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Query available slots
@@ -261,6 +272,19 @@ export function SchedulingPage() {
               {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule session'}
             </button>
           ) : null}
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSlot(null)
+              setLastLock(null)
+              setScheduledResult(null)
+              setRemainingSeconds(null)
+            }}
+            className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800"
+          >
+            Reset selection
+          </button>
         </div>
 
         {queryMutation.isPending ? <p className="mt-4 text-slate-400">Querying slots...</p> : null}
@@ -289,10 +313,17 @@ export function SchedulingPage() {
           </div>
         ) : null}
 
+        {remainingSeconds === 0 ? (
+          <div className="mt-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            The previous slot lock has expired. Please query or lock again before scheduling.
+          </div>
+        ) : null}
+
         {scheduledResult ? <SchedulingResultCard result={scheduledResult} /> : null}
       </PageCard>
 
       <PageCard title="Slots" description="Select one slot, then lock and schedule it.">
+        {slots.length === 0 && !queryMutation.isPending ? <p className="text-slate-400">No slots loaded yet. Query first to see available options.</p> : null}
         <div className="grid gap-4 md:grid-cols-2">
           {slots.map((slot) => {
             const isSelected = selectedSlot?.slotId === slot.slotId

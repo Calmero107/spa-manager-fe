@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { getAppointmentDetail } from '@/features/appointment/services/appointment.api'
 import { api } from '@/lib/api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
@@ -123,6 +124,12 @@ export function AppointmentLifecyclePage() {
   const [lockInfo, setLockInfo] = useState<SchedulingLockResponse | null>(null)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
 
+  const { data: appointmentDetail } = useQuery({
+    queryKey: ['appointment-detail', appointmentId],
+    queryFn: () => getAppointmentDetail(appointmentId),
+    enabled: Boolean(appointmentId),
+  })
+
   useEffect(() => {
     if (!preferredStaffId && staffId) {
       setPreferredStaffId(staffId)
@@ -181,7 +188,11 @@ export function AppointmentLifecyclePage() {
 
     const tick = () => {
       const diffMs = new Date(lockInfo.expiresAt).getTime() - Date.now()
-      setRemainingSeconds(Math.max(0, Math.ceil(diffMs / 1000)))
+      const seconds = Math.max(0, Math.ceil(diffMs / 1000))
+      setRemainingSeconds(seconds)
+      if (seconds === 0) {
+        setLockInfo(null)
+      }
     }
 
     tick()
@@ -193,6 +204,13 @@ export function AppointmentLifecyclePage() {
   const canReschedule = Boolean(appointmentId && selectedSlot && lockInfo && (remainingSeconds ?? 0) > 0)
   const hasBranchContext = Boolean(branchId)
   const hasSessionContext = Boolean(sessionId)
+  const hasValidDateRange = Boolean(dateFrom && dateTo && dateFrom <= dateTo)
+  const appointmentStatus = appointmentDetail?.status
+  const sessionStatus = appointmentDetail?.sessionStatus
+  const canCancel = appointmentStatus === 'CONFIRMED'
+  const canCheckIn = appointmentStatus === 'CONFIRMED' && sessionStatus === 'SCHEDULED'
+  const canComplete = appointmentStatus === 'CHECKED_IN' && sessionStatus === 'IN_PROGRESS'
+  const canRescheduleCurrentAppointment = appointmentStatus === 'CONFIRMED' && sessionStatus === 'SCHEDULED'
 
   const latestActionSummary = useMemo(() => {
     return cancelMutation.data ?? checkInMutation.data ?? completeMutation.data ?? rescheduleMutation.data ?? null
@@ -202,12 +220,12 @@ export function AppointmentLifecyclePage() {
     <div className="space-y-6">
       <PageCard title="Appointment lifecycle" description="Mapped to cancel / reschedule / check-in / complete APIs in the current backend.">
         <div className="mb-5 flex flex-wrap gap-3">
-          <a
-            href={appointmentId ? `/appointments/detail?appointmentId=${appointmentId}&sessionId=${sessionId}` : '/appointments/detail'}
+          <Link
+            to={appointmentId ? `/appointments/detail?appointmentId=${appointmentId}&sessionId=${sessionId}` : '/appointments/detail'}
             className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
           >
             Open appointment detail page
-          </a>
+          </Link>
         </div>
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
@@ -219,6 +237,17 @@ export function AppointmentLifecyclePage() {
         {!hasBranchContext ? (
           <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
             Missing branch context. Please sign in with a user that belongs to a branch before using appointment lifecycle actions.
+          </div>
+        ) : null}
+
+        {appointmentDetail ? (
+          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/30 p-4 text-sm text-slate-300">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-slate-400">Current status:</span>
+              <StatusBadge value={appointmentDetail.status} />
+              <span className="text-slate-400">Session:</span>
+              <StatusBadge value={appointmentDetail.sessionStatus} />
+            </div>
           </div>
         ) : null}
 
@@ -269,7 +298,7 @@ export function AppointmentLifecyclePage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext || !cancelReason.trim()}
+            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext || !cancelReason.trim() || !canCancel}
             onClick={() => cancelMutation.mutate(appointmentId)}
             className="rounded-xl border border-rose-700 px-4 py-3 text-sm text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -278,7 +307,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!appointmentId || checkInMutation.isPending || !hasBranchContext}
+            disabled={!appointmentId || checkInMutation.isPending || !hasBranchContext || !canCheckIn}
             onClick={() => checkInMutation.mutate(appointmentId)}
             className="rounded-xl border border-amber-700 px-4 py-3 text-sm text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -287,7 +316,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!sessionId || completeMutation.isPending || !hasBranchContext || !completeResultNote.trim()}
+            disabled={!sessionId || completeMutation.isPending || !hasBranchContext || !completeResultNote.trim() || !canComplete}
             onClick={() => completeMutation.mutate(sessionId)}
             className="rounded-xl border border-emerald-700 px-4 py-3 text-sm text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -312,6 +341,18 @@ export function AppointmentLifecyclePage() {
         {!hasSessionContext ? (
           <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
             Missing session context. Open this page from a scheduling/treatment-plan flow or paste a valid session ID.
+          </div>
+        ) : null}
+
+        {!hasValidDateRange ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Invalid date range. `Date To` must be the same as or later than `Date From`.
+          </div>
+        ) : null}
+
+        {appointmentDetail && !canRescheduleCurrentAppointment ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            This appointment is not in a reschedulable state. Only confirmed appointments with scheduled sessions can be rescheduled.
           </div>
         ) : null}
 
@@ -358,7 +399,7 @@ export function AppointmentLifecyclePage() {
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasBranchContext || !hasSessionContext || !dateFrom || !dateTo}
+            disabled={!hasBranchContext || !hasSessionContext || !hasValidDateRange || !canRescheduleCurrentAppointment}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Query new slots
@@ -367,7 +408,7 @@ export function AppointmentLifecyclePage() {
           {selectedSlot ? (
             <button
               type="button"
-              disabled={lockMutation.isPending || !hasBranchContext || !hasSessionContext}
+              disabled={lockMutation.isPending || !hasBranchContext || !hasSessionContext || !canRescheduleCurrentAppointment}
               onClick={() => lockMutation.mutate(selectedSlot.slotId)}
               className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -378,13 +419,25 @@ export function AppointmentLifecyclePage() {
           {canReschedule && selectedSlot && lockInfo ? (
             <button
               type="button"
-              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext || !rescheduleReason.trim()}
+              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext || !rescheduleReason.trim() || !canRescheduleCurrentAppointment}
               onClick={() => rescheduleMutation.mutate({ appointmentId, lockId: lockInfo.lockId, slotId: selectedSlot.slotId })}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {rescheduleMutation.isPending ? 'Rescheduling...' : 'Submit reschedule'}
             </button>
           ) : null}
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSlot(null)
+              setLockInfo(null)
+              setRemainingSeconds(null)
+            }}
+            className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800"
+          >
+            Reset reschedule state
+          </button>
         </div>
 
         {lockInfo ? (
@@ -392,6 +445,12 @@ export function AppointmentLifecyclePage() {
             <p>Lock ID: {lockInfo.lockId}</p>
             <p>Expires at: {new Date(lockInfo.expiresAt).toLocaleString()}</p>
             <p>Remaining seconds: {remainingSeconds ?? 0}</p>
+          </div>
+        ) : null}
+
+        {remainingSeconds === 0 ? (
+          <div className="mt-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            The previous reschedule lock has expired. Query and lock a slot again.
           </div>
         ) : null}
 
