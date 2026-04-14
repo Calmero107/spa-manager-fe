@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { SchedulingResultCard } from '@/features/scheduling/components/SchedulingResultCard'
+import { getStaff } from '@/features/staff/services/staff.api'
 import { api } from '@/lib/api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
@@ -81,6 +82,12 @@ export function SchedulingPage() {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const [scheduledResult, setScheduledResult] = useState<ScheduleSessionResponse | null>(null)
 
+  const { data: staffOptions, isLoading: isLoadingStaff } = useQuery({
+    queryKey: ['staff', branchId, 'TECHNICIAN', 'ACTIVE'],
+    queryFn: () => getStaff(branchId!, { role: 'TECHNICIAN', status: 'ACTIVE' }),
+    enabled: Boolean(branchId),
+  })
+
   useEffect(() => {
     if (!preferredStaffId && staffId) {
       setPreferredStaffId(staffId)
@@ -145,6 +152,7 @@ export function SchedulingPage() {
   const canSchedule = Boolean(selectedSlot && lastLock && (remainingSeconds ?? 0) > 0)
   const hasRequiredContext = Boolean(branchId && sessionId)
   const hasValidDateRange = Boolean(dateFrom && dateTo && dateFrom <= dateTo)
+  const selectedStaff = staffOptions?.find((staff) => staff.id === preferredStaffId)
 
   const selectedSummary = useMemo(() => {
     if (!selectedSlot) {
@@ -191,13 +199,22 @@ export function SchedulingPage() {
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm text-slate-300">Preferred Staff ID</label>
-            <input
+            <label className="mb-2 block text-sm text-slate-300">Preferred Staff</label>
+            <select
               value={preferredStaffId}
               onChange={(event) => setPreferredStaffId(event.target.value)}
-              placeholder="Optional staff ID"
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-            />
+            >
+              <option value="">No preference</option>
+              {staffOptions?.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              {isLoadingStaff ? 'Loading active technicians...' : selectedStaff ? `Selected: ${selectedStaff.name}` : 'Optional technician preference'}
+            </p>
           </div>
           <div>
             <label className="mb-2 block text-sm text-slate-300">Date From</label>

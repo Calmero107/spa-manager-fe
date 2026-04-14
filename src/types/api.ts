@@ -72,6 +72,17 @@ export type EquipmentAllocation = {
   quantity: number
 }
 
+export type Staff = {
+  id: string
+  branchId: string
+  name: string
+  role: string
+  status: string
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
 export type AvailableSlot = {
   slotId: string
   startTime: string

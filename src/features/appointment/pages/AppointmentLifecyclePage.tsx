@@ -5,6 +5,7 @@ import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getAppointmentDetail } from '@/features/appointment/services/appointment.api'
+import { getStaff } from '@/features/staff/services/staff.api'
 import { api } from '@/lib/api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 import { createRequestId } from '@/lib/request-id'
@@ -130,6 +131,12 @@ export function AppointmentLifecyclePage() {
     enabled: Boolean(appointmentId),
   })
 
+  const { data: staffOptions, isLoading: isLoadingStaff } = useQuery({
+    queryKey: ['staff', branchId, 'TECHNICIAN', 'ACTIVE'],
+    queryFn: () => getStaff(branchId!, { role: 'TECHNICIAN', status: 'ACTIVE' }),
+    enabled: Boolean(branchId),
+  })
+
   useEffect(() => {
     if (!preferredStaffId && staffId) {
       setPreferredStaffId(staffId)
@@ -154,7 +161,7 @@ export function AppointmentLifecyclePage() {
   })
   const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId!, id) })
   const completeMutation = useMutation({
-    mutationFn: (id: string) => completeSession(branchId!, staffId, id, completeResultNote),
+    mutationFn: (id: string) => completeSession(branchId!, preferredStaffId || staffId, id, completeResultNote),
   })
 
   const queryMutation = useMutation({
@@ -211,6 +218,7 @@ export function AppointmentLifecyclePage() {
   const canCheckIn = appointmentStatus === 'CONFIRMED' && sessionStatus === 'SCHEDULED'
   const canComplete = appointmentStatus === 'CHECKED_IN' && sessionStatus === 'IN_PROGRESS'
   const canRescheduleCurrentAppointment = appointmentStatus === 'CONFIRMED' && sessionStatus === 'SCHEDULED'
+  const selectedStaff = staffOptions?.find((staff) => staff.id === preferredStaffId)
 
   const latestActionSummary = useMemo(() => {
     return cancelMutation.data ?? checkInMutation.data ?? completeMutation.data ?? rescheduleMutation.data ?? null
@@ -230,7 +238,7 @@ export function AppointmentLifecyclePage() {
         <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
           <p>
             Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span>,{' '}
-            <span className="font-mono text-slate-200">staffId={staffId ?? 'optional'}</span> and{' '}
+            <span className="font-mono text-slate-200">staffId={preferredStaffId || staffId || 'optional'}</span> and{' '}
             <span className="font-mono text-slate-200">sessionId={sessionId || 'missing'}</span> from active context.
           </p>
         </div>
@@ -272,7 +280,7 @@ export function AppointmentLifecyclePage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm text-slate-300">Cancel reason</label>
             <textarea
@@ -292,6 +300,24 @@ export function AppointmentLifecyclePage() {
               onChange={(event) => setCompleteResultNote(event.target.value)}
               className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
             />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Technician for completion</label>
+            <select
+              value={preferredStaffId}
+              onChange={(event) => setPreferredStaffId(event.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+            >
+              <option value="">Use signed-in staff</option>
+              {staffOptions?.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              {isLoadingStaff ? 'Loading active technicians...' : selectedStaff ? `Selected: ${selectedStaff.name}` : 'Optional technician override'}
+            </p>
           </div>
         </div>
 
@@ -358,13 +384,22 @@ export function AppointmentLifecyclePage() {
 
         <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="mb-2 block text-sm text-slate-300">Preferred Staff ID</label>
-            <input
+            <label className="mb-2 block text-sm text-slate-300">Preferred Staff</label>
+            <select
               value={preferredStaffId}
               onChange={(event) => setPreferredStaffId(event.target.value)}
-              placeholder="Optional staff ID"
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-            />
+            >
+              <option value="">No preference</option>
+              {staffOptions?.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              {isLoadingStaff ? 'Loading active technicians...' : selectedStaff ? `Selected: ${selectedStaff.name}` : 'Optional technician preference'}
+            </p>
           </div>
           <div>
             <label className="mb-2 block text-sm text-slate-300">Date From</label>
