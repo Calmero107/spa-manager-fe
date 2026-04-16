@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
@@ -7,10 +8,12 @@ import { getCustomers } from '@/features/customer/services/customer.api'
 export function CustomersPage() {
   const { user } = useAuth()
   const branchId = user?.branchId
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['customers', branchId],
-    queryFn: () => getCustomers(branchId!),
+    queryKey: ['customers', branchId, searchQuery],
+    queryFn: () => getCustomers(branchId!, searchQuery),
     enabled: Boolean(branchId),
   })
 
@@ -22,6 +25,33 @@ export function CustomersPage() {
           Create customer
         </Link>
       </div>
+
+      <div className="mb-5 flex flex-wrap gap-3">
+        <input
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Search by name, phone, or customer ID"
+          className="min-w-[280px] flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+        />
+        <button
+          type="button"
+          onClick={() => setSearchQuery(searchInput)}
+          className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300"
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSearchInput('')
+            setSearchQuery('')
+          }}
+          className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800"
+        >
+          Reset
+        </button>
+      </div>
+
       {!branchId ? <p className="text-amber-300">Missing branch context from signed-in user.</p> : null}
       {isLoading ? <p className="text-slate-400">Loading customers...</p> : null}
       {error ? <p className="text-rose-400">Failed to load customers.</p> : null}
