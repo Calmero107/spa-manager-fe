@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -109,6 +109,7 @@ async function rescheduleAppointment(branchId: string, payload: { appointmentId:
 export function AppointmentLifecyclePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const persistedFlow = appointmentFlowStorage.get()
+  const queryClient = useQueryClient()
   const { user } = useAuth()
   const branchId = user?.branchId
   const staffId = user?.staffId
@@ -144,6 +145,12 @@ export function AppointmentLifecyclePage() {
   }, [preferredStaffId, staffId])
 
   useEffect(() => {
+    if (appointmentDetail?.sessionId && appointmentDetail.sessionId !== sessionId) {
+      setSessionId(appointmentDetail.sessionId)
+    }
+  }, [appointmentDetail?.sessionId, sessionId])
+
+  useEffect(() => {
     const next = new URLSearchParams(searchParams)
     if (appointmentId) next.set('appointmentId', appointmentId)
     else next.delete('appointmentId')
@@ -156,12 +163,23 @@ export function AppointmentLifecyclePage() {
     }
   }, [appointmentId, searchParams, sessionId, setSearchParams])
 
+  const refreshAppointmentDetail = async () => {
+    if (appointmentId) {
+      await queryClient.invalidateQueries({ queryKey: ['appointment-detail', appointmentId] })
+    }
+  }
+
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelAppointment(branchId!, id, { reason: cancelReason, applyRefund }),
+    onSuccess: refreshAppointmentDetail,
   })
-  const checkInMutation = useMutation({ mutationFn: (id: string) => checkInAppointment(branchId!, id) })
+  const checkInMutation = useMutation({
+    mutationFn: (id: string) => checkInAppointment(branchId!, id),
+    onSuccess: refreshAppointmentDetail,
+  })
   const completeMutation = useMutation({
     mutationFn: (id: string) => completeSession(branchId!, preferredStaffId || staffId, id, completeResultNote),
+    onSuccess: refreshAppointmentDetail,
   })
 
   const queryMutation = useMutation({
@@ -181,9 +199,10 @@ export function AppointmentLifecyclePage() {
   const rescheduleMutation = useMutation({
     mutationFn: (payload: { appointmentId: string; lockId: string; slotId: string }) =>
       rescheduleAppointment(branchId!, { ...payload, reason: rescheduleReason }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAppointmentId(data.appointmentId)
       setSessionId(data.sessionId)
+      await refreshAppointmentDetail()
     },
   })
 

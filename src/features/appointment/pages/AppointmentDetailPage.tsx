@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
@@ -19,6 +20,16 @@ export function AppointmentDetailPage() {
   })
 
   const effectiveSessionId = data?.sessionId ?? fallbackSessionId
+  const canOpenLifecycle = Boolean(appointmentId && effectiveSessionId)
+  const canCheckIn = data?.status === 'CONFIRMED' && data.sessionStatus === 'SCHEDULED'
+  const canComplete = data?.status === 'CHECKED_IN' && data.sessionStatus === 'IN_PROGRESS'
+  const canReschedule = data?.status === 'CONFIRMED' && data.sessionStatus === 'SCHEDULED'
+
+  useEffect(() => {
+    if (appointmentId && effectiveSessionId) {
+      appointmentFlowStorage.set({ appointmentId, sessionId: effectiveSessionId })
+    }
+  }, [appointmentId, effectiveSessionId])
 
   return (
     <div className="space-y-6">
@@ -36,64 +47,87 @@ export function AppointmentDetailPage() {
         {isError ? <p className="text-rose-400">Failed to load appointment detail from backend.</p> : null}
 
         {data ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Appointment ID</p>
-              <p className="mt-2 break-all text-sm text-white">{data.id}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Session ID</p>
-              <p className="mt-2 break-all text-sm text-white">{data.sessionId}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Appointment status</p>
-              <div className="mt-2">
-                <StatusBadge value={data.status} />
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Appointment ID</p>
+                <p className="mt-2 break-all text-sm text-white">{data.id}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Session ID</p>
+                <p className="mt-2 break-all text-sm text-white">{data.sessionId}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Appointment status</p>
+                <div className="mt-2">
+                  <StatusBadge value={data.status} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Session status</p>
+                <div className="mt-2">
+                  <StatusBadge value={data.sessionStatus} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Staff</p>
+                <p className="mt-2 text-sm text-white">{data.staffName}</p>
+                <p className="mt-1 break-all text-xs text-slate-400">{data.staffId}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Room</p>
+                <p className="mt-2 text-sm text-white">{data.roomName}</p>
+                <p className="mt-1 break-all text-xs text-slate-400">{data.roomId}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Start time</p>
+                <p className="mt-2 text-sm text-white">{new Date(data.startTime).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">End time</p>
+                <p className="mt-2 text-sm text-white">{new Date(data.endTime).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Branch ID</p>
+                <p className="mt-2 break-all text-sm text-white">{data.branchId}</p>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Version</p>
+                <p className="mt-2 text-sm text-white">{data.version}</p>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Session status</p>
-              <div className="mt-2">
-                <StatusBadge value={data.sessionStatus} />
-              </div>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Staff</p>
-              <p className="mt-2 text-sm text-white">{data.staffName}</p>
-              <p className="mt-1 break-all text-xs text-slate-400">{data.staffId}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Room</p>
-              <p className="mt-2 text-sm text-white">{data.roomName}</p>
-              <p className="mt-1 break-all text-xs text-slate-400">{data.roomId}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Start time</p>
-              <p className="mt-2 text-sm text-white">{new Date(data.startTime).toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">End time</p>
-              <p className="mt-2 text-sm text-white">{new Date(data.endTime).toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Branch ID</p>
-              <p className="mt-2 break-all text-sm text-white">{data.branchId}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <p className="text-sm text-slate-400">Version</p>
-              <p className="mt-2 text-sm text-white">{data.version}</p>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4 text-sm text-slate-300">
+              <p className="mb-3 font-medium text-white">Suggested next action</p>
+              {canComplete ? (
+                <p>Session is in progress. The next expected step is to complete the session in the lifecycle page.</p>
+              ) : canCheckIn ? (
+                <p>Appointment is confirmed and ready for check-in.</p>
+              ) : canReschedule ? (
+                <p>Appointment is still reschedulable if the customer requests a change.</p>
+              ) : (
+                <p>No direct action is recommended from the current state. Review lifecycle history or return to scheduling context.</p>
+              )}
             </div>
           </div>
         ) : null}
       </PageCard>
 
       <PageCard title="Next action" description="Jump back into the appointment lifecycle flow using the current server-backed appointment context.">
-        <Link
-          to={appointmentId ? `/appointments/lifecycle?appointmentId=${appointmentId}&sessionId=${effectiveSessionId}` : '/appointments/lifecycle'}
-          className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-        >
-          Open appointment lifecycle
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to={canOpenLifecycle ? `/appointments/lifecycle?appointmentId=${appointmentId}&sessionId=${effectiveSessionId}` : '/appointments/lifecycle'}
+            className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
+          >
+            Open appointment lifecycle
+          </Link>
+          <Link
+            to={effectiveSessionId ? `/scheduling?sessionId=${effectiveSessionId}` : '/scheduling'}
+            className="inline-flex rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-900/40"
+          >
+            Back to scheduling
+          </Link>
+        </div>
       </PageCard>
     </div>
   )
