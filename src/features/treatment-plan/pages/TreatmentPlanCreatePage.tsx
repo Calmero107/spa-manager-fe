@@ -48,6 +48,7 @@ export function TreatmentPlanCreatePage() {
   useEffect(() => {
     if (prefilledCustomerId) {
       setValue('customerId', prefilledCustomerId, { shouldValidate: true })
+      setValue('customerSearch', prefilledCustomerId)
     }
   }, [prefilledCustomerId, setValue])
 
@@ -151,9 +152,20 @@ export function TreatmentPlanCreatePage() {
 
         {selectedCustomer ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-            <p className="text-sm text-slate-400">Selected customer</p>
-            <p className="mt-2 text-white">{selectedCustomer.name || 'Unnamed customer'} · {selectedCustomer.phone}</p>
-            <p className="mt-1 break-all text-xs text-slate-500">{selectedCustomer.id}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-slate-400">Selected customer</p>
+                <p className="mt-2 text-white">{selectedCustomer.name || 'Unnamed customer'} · {selectedCustomer.phone}</p>
+                <p className="mt-1 break-all text-xs text-slate-500">{selectedCustomer.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setValue('customerId', '', { shouldValidate: true })}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800"
+              >
+                Clear selection
+              </button>
+            </div>
           </div>
         ) : null}
 

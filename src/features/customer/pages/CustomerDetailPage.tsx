@@ -17,7 +17,13 @@ export function CustomerDetailPage() {
       {isError ? <p className="text-rose-400">Failed to load customer detail.</p> : null}
       {data ? (
         <>
-          <div className="mb-5 flex justify-end">
+          <div className="mb-5 flex flex-wrap justify-end gap-3">
+            <Link
+              to={`/treatment-plans?customerId=${data.id}`}
+              className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-800"
+            >
+              View treatment plans for this customer
+            </Link>
             <Link
               to={`/treatment-plans/new?customerId=${data.id}`}
               className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300"

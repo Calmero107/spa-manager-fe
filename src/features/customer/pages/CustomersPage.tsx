@@ -30,6 +30,11 @@ export function CustomersPage() {
         <input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              setSearchQuery(searchInput)
+            }
+          }}
           placeholder="Search by name, phone, or customer ID"
           className="min-w-[280px] flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
         />
@@ -51,6 +56,13 @@ export function CustomersPage() {
           Reset
         </button>
       </div>
+
+      {searchQuery ? (
+        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/30 px-4 py-3 text-sm text-slate-300">
+          Showing results for <span className="font-medium text-white">“{searchQuery}”</span>
+          {data ? <span className="text-slate-400"> · {data.length} result(s)</span> : null}
+        </div>
+      ) : null}
 
       {!branchId ? <p className="text-amber-300">Missing branch context from signed-in user.</p> : null}
       {isLoading ? <p className="text-slate-400">Loading customers...</p> : null}

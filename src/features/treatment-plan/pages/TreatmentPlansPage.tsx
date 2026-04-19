@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -12,10 +12,19 @@ const STATUS_OPTIONS = ['ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED']
 export function TreatmentPlansPage() {
   const { user } = useAuth()
   const branchId = user?.branchId
+  const [searchParams] = useSearchParams()
+  const initialCustomerId = searchParams.get('customerId') ?? ''
   const [statusInput, setStatusInput] = useState('')
-  const [customerInput, setCustomerInput] = useState('')
+  const [customerInput, setCustomerInput] = useState(initialCustomerId)
   const [appliedStatus, setAppliedStatus] = useState('')
-  const [appliedCustomerId, setAppliedCustomerId] = useState('')
+  const [appliedCustomerId, setAppliedCustomerId] = useState(initialCustomerId)
+
+  useEffect(() => {
+    if (initialCustomerId) {
+      setCustomerInput(initialCustomerId)
+      setAppliedCustomerId(initialCustomerId)
+    }
+  }, [initialCustomerId])
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['treatment-plans', branchId, appliedStatus, appliedCustomerId],
@@ -128,25 +137,31 @@ export function TreatmentPlansPage() {
       ) : null}
 
       <div className="grid gap-4">
-        {data?.map((plan) => (
-          <Link
-            key={plan.id}
-            to={`/treatment-plans/${plan.id}`}
-            className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-slate-400">Plan ID</p>
-                <p className="break-all text-sm text-white">{plan.id}</p>
-                <p className="pt-2 text-sm text-slate-300">Customer: {plan.customerId}</p>
-                <p className="text-sm text-slate-300">Sessions: {plan.sessions.length}</p>
-                <p className="text-sm text-slate-300">Total price: {plan.totalPrice}</p>
-                <p className="text-xs text-slate-500">Updated: {plan.updatedAt ?? plan.createdAt}</p>
+        {data?.map((plan) => {
+          const customer = customers?.find((item) => item.id === plan.customerId)
+          return (
+            <Link
+              key={plan.id}
+              to={`/treatment-plans/${plan.id}`}
+              className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-400">Plan ID</p>
+                  <p className="break-all text-sm text-white">{plan.id}</p>
+                  <p className="pt-2 text-sm text-slate-300">
+                    Customer: {customer?.name || 'Unknown customer'}
+                    <span className="ml-2 text-slate-500">({plan.customerId})</span>
+                  </p>
+                  <p className="text-sm text-slate-300">Sessions: {plan.sessions.length}</p>
+                  <p className="text-sm text-slate-300">Total price: {plan.totalPrice}</p>
+                  <p className="text-xs text-slate-500">Updated: {plan.updatedAt ?? plan.createdAt}</p>
+                </div>
+                <StatusBadge value={plan.status} />
               </div>
-              <StatusBadge value={plan.status} />
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
     </PageCard>
   )
