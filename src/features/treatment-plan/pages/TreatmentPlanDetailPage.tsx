@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { getCustomer } from '@/features/customer/services/customer.api'
 import { getTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
 import { api } from '@/lib/api'
 import type { ApiResponse, TreatmentPlan } from '@/types/api'
@@ -16,6 +18,12 @@ export function TreatmentPlanDetailPage() {
     queryKey: ['treatment-plan-detail', planId],
     queryFn: () => getTreatmentPlan(planId),
     enabled: Boolean(planId),
+  })
+
+  const { data: customer } = useQuery({
+    queryKey: ['customer-detail', data?.customerId],
+    queryFn: () => getCustomer(data!.customerId),
+    enabled: Boolean(data?.customerId),
   })
 
   const updateStatusMutation = useMutation({
@@ -32,6 +40,19 @@ export function TreatmentPlanDetailPage() {
     },
   })
 
+  const nextActionMessage = useMemo(() => {
+    if (!data) return null
+    if (data.status === 'PAUSED') return 'Plan is paused. Resume it before scheduling more sessions.'
+    if (data.status === 'CANCELLED') return 'Plan is cancelled. No new scheduling actions should be taken.'
+    if (data.status === 'COMPLETED') return 'Plan is completed. Review sessions or return to the filtered list.'
+
+    const notScheduledCount = data.sessions.filter((session) => session.status === 'NOT_SCHEDULED').length
+    if (notScheduledCount > 0) {
+      return `${notScheduledCount} session(s) are still waiting to be scheduled.`
+    }
+    return 'All sessions already moved past the planning stage. Use lifecycle pages to continue execution.'
+  }, [data])
+
   return (
     <div className="space-y-6">
       <PageCard
@@ -47,9 +68,26 @@ export function TreatmentPlanDetailPage() {
               <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
                 <p className="text-sm text-slate-400">Plan ID</p>
                 <p className="mt-2 break-all text-sm text-white">{data.id}</p>
-                <p className="mt-3 text-sm text-slate-300">Customer: {data.customerId}</p>
+                <p className="mt-3 text-sm text-slate-300">
+                  Customer: {customer?.name || 'Unknown customer'}
+                  <span className="ml-2 text-slate-500">({data.customerId})</span>
+                </p>
                 <p className="mt-1 text-sm text-slate-300">Branch: {data.branchId}</p>
                 <p className="mt-1 text-sm text-slate-300">Total price: {data.totalPrice}</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    to={`/customers/${data.customerId}`}
+                    className="inline-flex rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-900/40"
+                  >
+                    Open customer detail
+                  </Link>
+                  <Link
+                    to={`/treatment-plans?customerId=${data.customerId}`}
+                    className="inline-flex rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-900/40"
+                  >
+                    View customer plans
+                  </Link>
+                </div>
               </div>
 
               <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
@@ -57,10 +95,11 @@ export function TreatmentPlanDetailPage() {
                 <div className="mt-2 flex items-center gap-3">
                   <StatusBadge value={data.status} />
                 </div>
+                <p className="mt-3 text-sm text-slate-300">{nextActionMessage}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={data.status === 'ACTIVE' || updateStatusMutation.isPending}
+                    disabled={data.status === 'ACTIVE' || updateStatusMutation.isPending || ['COMPLETED', 'CANCELLED'].includes(data.status)}
                     onClick={() => updateStatusMutation.mutate('ACTIVE')}
                     className="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -68,7 +107,7 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={data.status === 'PAUSED' || updateStatusMutation.isPending}
+                    disabled={data.status === 'PAUSED' || updateStatusMutation.isPending || ['COMPLETED', 'CANCELLED'].includes(data.status)}
                     onClick={() => updateStatusMutation.mutate('PAUSED')}
                     className="rounded-lg border border-amber-700 px-3 py-1 text-xs text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -101,35 +140,58 @@ export function TreatmentPlanDetailPage() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-white">Sessions</h3>
                 <Link
-                  to="/treatment-plans"
+                  to={customer ? `/treatment-plans?customerId=${customer.id}` : '/treatment-plans'}
                   className="text-sm text-cyan-300 hover:text-cyan-200"
                 >
                   Back to list
                 </Link>
               </div>
               <div className="grid gap-4">
-                {data.sessions.map((session) => (
-                  <div key={session.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm text-slate-400">Session #{session.sequenceNo}</p>
-                        <h4 className="mt-1 text-base font-semibold text-white">{session.serviceName}</h4>
-                        <p className="mt-2 text-sm text-slate-300">Duration: {session.duration} minutes</p>
-                        <p className="mt-1 text-sm text-slate-300">Price: {session.price}</p>
-                        <p className="mt-1 break-all text-xs text-slate-400">Session ID: {session.id}</p>
+                {data.sessions.map((session) => {
+                  const canSchedule = data.status === 'ACTIVE' && session.status === 'NOT_SCHEDULED'
+                  const canOpenScheduling = ['NOT_SCHEDULED', 'SCHEDULED', 'IN_PROGRESS'].includes(session.status)
+                  const canOpenLifecycle = session.status !== 'NOT_SCHEDULED'
+
+                  return (
+                    <div key={session.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-slate-400">Session #{session.sequenceNo}</p>
+                          <h4 className="mt-1 text-base font-semibold text-white">{session.serviceName}</h4>
+                          <p className="mt-2 text-sm text-slate-300">Duration: {session.duration} minutes</p>
+                          <p className="mt-1 text-sm text-slate-300">Price: {session.price}</p>
+                          <p className="mt-1 break-all text-xs text-slate-400">Session ID: {session.id}</p>
+                        </div>
+                        <StatusBadge value={session.status} />
                       </div>
-                      <StatusBadge value={session.status} />
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Link
+                          to={`/scheduling?sessionId=${session.id}`}
+                          className={`inline-flex rounded-lg border px-4 py-2 text-sm font-medium ${
+                            canOpenScheduling
+                              ? 'border-cyan-700 text-cyan-100 hover:bg-cyan-900/40'
+                              : 'pointer-events-none border-slate-700 text-slate-500 opacity-50'
+                          }`}
+                        >
+                          {canSchedule ? 'Schedule this session' : 'Open scheduling'}
+                        </Link>
+                        <Link
+                          to="/appointments/lifecycle"
+                          className={`inline-flex rounded-lg border px-4 py-2 text-sm font-medium ${
+                            canOpenLifecycle
+                              ? 'border-slate-700 text-slate-100 hover:bg-slate-900/40'
+                              : 'pointer-events-none border-slate-700 text-slate-500 opacity-50'
+                          }`}
+                        >
+                          Open lifecycle
+                        </Link>
+                      </div>
+                      {!canSchedule && session.status === 'NOT_SCHEDULED' && data.status !== 'ACTIVE' ? (
+                        <p className="mt-3 text-xs text-amber-300">Activate the treatment plan before scheduling this session.</p>
+                      ) : null}
                     </div>
-                    <div className="mt-4">
-                      <Link
-                        to={`/scheduling?sessionId=${session.id}`}
-                        className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-                      >
-                        Schedule this session
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
