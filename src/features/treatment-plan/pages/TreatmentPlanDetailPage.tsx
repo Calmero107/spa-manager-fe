@@ -42,6 +42,7 @@ export function TreatmentPlanDetailPage() {
 
   const nextActionMessage = useMemo(() => {
     if (!data) return null
+    if (data.status === 'DRAFT') return 'Plan is still in draft. Activate it before scheduling any session.'
     if (data.status === 'PAUSED') return 'Plan is paused. Resume it before scheduling more sessions.'
     if (data.status === 'CANCELLED') return 'Plan is cancelled. No new scheduling actions should be taken.'
     if (data.status === 'COMPLETED') return 'Plan is completed. Review sessions or return to the filtered list.'
@@ -96,6 +97,11 @@ export function TreatmentPlanDetailPage() {
                   <StatusBadge value={data.status} />
                 </div>
                 <p className="mt-3 text-sm text-slate-300">{nextActionMessage}</p>
+                {data.status === 'DRAFT' ? (
+                  <div className="mt-3 rounded-lg border border-amber-800 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                    Draft plans cannot schedule sessions yet. Activate the plan when service sequencing and customer selection are ready.
+                  </div>
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -107,7 +113,7 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={data.status === 'PAUSED' || updateStatusMutation.isPending || ['COMPLETED', 'CANCELLED'].includes(data.status)}
+                    disabled={data.status !== 'ACTIVE' || updateStatusMutation.isPending}
                     onClick={() => updateStatusMutation.mutate('PAUSED')}
                     className="rounded-lg border border-amber-700 px-3 py-1 text-xs text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -115,7 +121,7 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={['COMPLETED', 'CANCELLED'].includes(data.status) || updateStatusMutation.isPending}
+                    disabled={data.status !== 'ACTIVE' || updateStatusMutation.isPending}
                     onClick={() => updateStatusMutation.mutate('COMPLETED')}
                     className="rounded-lg border border-cyan-700 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -143,7 +149,7 @@ export function TreatmentPlanDetailPage() {
                   to={customer ? `/treatment-plans?customerId=${customer.id}` : '/treatment-plans'}
                   className="text-sm text-cyan-300 hover:text-cyan-200"
                 >
-                  Back to list
+                  Back to filtered list
                 </Link>
               </div>
               <div className="grid gap-4">
@@ -187,7 +193,11 @@ export function TreatmentPlanDetailPage() {
                         </Link>
                       </div>
                       {!canSchedule && session.status === 'NOT_SCHEDULED' && data.status !== 'ACTIVE' ? (
-                        <p className="mt-3 text-xs text-amber-300">Activate the treatment plan before scheduling this session.</p>
+                        <p className="mt-3 text-xs text-amber-300">
+                          {data.status === 'DRAFT'
+                            ? 'This session is waiting for plan activation. Switch the treatment plan from DRAFT to ACTIVE first.'
+                            : 'Activate the treatment plan before scheduling this session.'}
+                        </p>
                       ) : null}
                     </div>
                   )

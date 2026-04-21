@@ -101,13 +101,17 @@ export function TreatmentPlanCreatePage() {
   return (
     <PageCard
       title="Create treatment plan"
-      description="Create a treatment plan from the signed-in user's branch by selecting a customer and one or more services."
+      description="Create a treatment plan from the signed-in user's branch by selecting a customer and one or more services. New plans start in DRAFT, then move to ACTIVE when they are ready for scheduling."
     >
       <form className="grid gap-6 md:max-w-4xl" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
           <p className="text-sm text-slate-400">Branch context</p>
           <p className="mt-2 break-all text-sm text-white">{branchId}</p>
           <p className="mt-2 text-xs text-slate-500">Taken automatically from the signed-in user session.</p>
+          <div className="mt-4 inline-flex rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200">
+            Initial status: DRAFT
+          </div>
+          <p className="mt-3 text-xs text-amber-300">After creation, open the treatment plan detail page and activate the plan before scheduling sessions.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[1.1fr_1.9fr]">

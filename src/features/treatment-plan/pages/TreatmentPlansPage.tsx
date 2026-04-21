@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getCustomers } from '@/features/customer/services/customer.api'
 import { getTreatmentPlans } from '@/features/treatment-plan/services/treatment-plan.api'
 
-const STATUS_OPTIONS = ['ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED']
+const STATUS_OPTIONS = ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED']
 
 export function TreatmentPlansPage() {
   const { user } = useAuth()
@@ -46,7 +46,7 @@ export function TreatmentPlansPage() {
   return (
     <PageCard
       title="Treatment plans"
-      description="Browse treatment plans for the current branch, inspect generated sessions, and navigate into planning details."
+      description="Browse treatment plans for the current branch, inspect generated sessions, and move plans from draft into active scheduling."
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm text-slate-400">Current branch: {branchId}</p>
@@ -155,6 +155,9 @@ export function TreatmentPlansPage() {
                   </p>
                   <p className="text-sm text-slate-300">Sessions: {plan.sessions.length}</p>
                   <p className="text-sm text-slate-300">Total price: {plan.totalPrice}</p>
+                  {plan.status === 'DRAFT' ? (
+                    <p className="text-xs text-amber-300">Draft plan — activate it before scheduling sessions.</p>
+                  ) : null}
                   <p className="text-xs text-slate-500">Updated: {plan.updatedAt ?? plan.createdAt}</p>
                 </div>
                 <StatusBadge value={plan.status} />
