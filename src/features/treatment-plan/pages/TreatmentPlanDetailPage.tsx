@@ -26,6 +26,31 @@ export function TreatmentPlanDetailPage() {
     enabled: Boolean(data?.customerId),
   })
 
+  const refreshPlanDetail = async (updated: TreatmentPlan) => {
+    queryClient.setQueryData(['treatment-plan-detail', planId], updated)
+    await queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] })
+  }
+
+  const activateMutation = useMutation({
+    mutationFn: () =>
+      api
+        .post<ApiResponse<TreatmentPlan>>(`/treatment-plans/${planId}/activate`, {
+          reason: 'activated from UI',
+        })
+        .then((res) => res.data.data),
+    onSuccess: refreshPlanDetail,
+  })
+
+  const pauseMutation = useMutation({
+    mutationFn: () =>
+      api
+        .post<ApiResponse<TreatmentPlan>>(`/treatment-plans/${planId}/pause`, {
+          reason: 'paused from UI',
+        })
+        .then((res) => res.data.data),
+    onSuccess: refreshPlanDetail,
+  })
+
   const updateStatusMutation = useMutation({
     mutationFn: (status: string) =>
       api
@@ -34,10 +59,7 @@ export function TreatmentPlanDetailPage() {
           reason: 'updated from UI',
         })
         .then((res) => res.data.data),
-    onSuccess: async (updated) => {
-      queryClient.setQueryData(['treatment-plan-detail', planId], updated)
-      await queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] })
-    },
+    onSuccess: refreshPlanDetail,
   })
 
   const nextActionMessage = useMemo(() => {
@@ -53,6 +75,8 @@ export function TreatmentPlanDetailPage() {
     }
     return 'All sessions already moved past the planning stage. Use lifecycle pages to continue execution.'
   }, [data])
+
+  const isMutating = activateMutation.isPending || pauseMutation.isPending || updateStatusMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -105,23 +129,23 @@ export function TreatmentPlanDetailPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={data.status === 'ACTIVE' || updateStatusMutation.isPending || ['COMPLETED', 'CANCELLED'].includes(data.status)}
-                    onClick={() => updateStatusMutation.mutate('ACTIVE')}
+                    disabled={data.status === 'ACTIVE' || isMutating || ['COMPLETED', 'CANCELLED'].includes(data.status)}
+                    onClick={() => activateMutation.mutate()}
                     className="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Set ACTIVE
+                    Activate
                   </button>
                   <button
                     type="button"
-                    disabled={data.status !== 'ACTIVE' || updateStatusMutation.isPending}
-                    onClick={() => updateStatusMutation.mutate('PAUSED')}
+                    disabled={data.status !== 'ACTIVE' || isMutating}
+                    onClick={() => pauseMutation.mutate()}
                     className="rounded-lg border border-amber-700 px-3 py-1 text-xs text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Pause
                   </button>
                   <button
                     type="button"
-                    disabled={data.status !== 'ACTIVE' || updateStatusMutation.isPending}
+                    disabled={data.status !== 'ACTIVE' || isMutating}
                     onClick={() => updateStatusMutation.mutate('COMPLETED')}
                     className="rounded-lg border border-cyan-700 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -129,14 +153,14 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={['COMPLETED', 'CANCELLED'].includes(data.status) || updateStatusMutation.isPending}
+                    disabled={['COMPLETED', 'CANCELLED'].includes(data.status) || isMutating}
                     onClick={() => updateStatusMutation.mutate('CANCELLED')}
                     className="rounded-lg border border-rose-700 px-3 py-1 text-xs text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Cancel
                   </button>
                 </div>
-                {updateStatusMutation.isError ? (
+                {activateMutation.isError || pauseMutation.isError || updateStatusMutation.isError ? (
                   <p className="mt-3 text-sm text-rose-400">Failed to update treatment plan status.</p>
                 ) : null}
               </div>
