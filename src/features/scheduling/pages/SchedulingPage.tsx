@@ -70,6 +70,8 @@ export function SchedulingPage() {
   const { user } = useAuth()
   const branchId = user?.branchId
   const staffId = user?.staffId
+  const role = user?.role
+  const canScheduleSessions = ['OWNER', 'MANAGER', 'RECEPTIONIST'].includes(role ?? '')
   const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
   const [preferredStaffId, setPreferredStaffId] = useState(staffId ?? '')
   const [dateFrom, setDateFrom] = useState(getTodayDateInput())
@@ -176,6 +178,12 @@ export function SchedulingPage() {
           </p>
         </div>
 
+        {!canScheduleSessions ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Your role does not have permission to query, lock, or schedule sessions.
+          </div>
+        ) : null}
+
         {!hasRequiredContext ? (
           <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
             Missing scheduling context. Please open this page from Treatment Plan detail or ensure the signed-in user has a branch.
@@ -262,7 +270,7 @@ export function SchedulingPage() {
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasRequiredContext || !hasValidDateRange}
+            disabled={!canScheduleSessions || !hasRequiredContext || !hasValidDateRange}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Query available slots
@@ -272,7 +280,7 @@ export function SchedulingPage() {
             <button
               type="button"
               onClick={() => lockMutation.mutate(selectedSlot.slotId)}
-              disabled={lockMutation.isPending || !hasRequiredContext}
+              disabled={!canScheduleSessions || lockMutation.isPending || !hasRequiredContext}
               className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {lockMutation.isPending ? 'Locking...' : 'Lock selected slot'}
@@ -283,7 +291,7 @@ export function SchedulingPage() {
             <button
               type="button"
               onClick={() => scheduleMutation.mutate({ slotId: selectedSlot.slotId, lockId: lastLock.lockId })}
-              disabled={scheduleMutation.isPending || !hasRequiredContext || (overrideGapRule && !overrideReason.trim())}
+              disabled={!canScheduleSessions || scheduleMutation.isPending || !hasRequiredContext || (overrideGapRule && !overrideReason.trim())}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule session'}

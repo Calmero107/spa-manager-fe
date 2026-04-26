@@ -13,6 +13,8 @@ export function TreatmentPlanDetailPage() {
   const { planId = '' } = useParams()
   const { user } = useAuth()
   const branchId = user?.branchId
+  const role = user?.role
+  const canManageTreatmentPlans = ['OWNER', 'MANAGER', 'RECEPTIONIST'].includes(role ?? '')
   const queryClient = useQueryClient()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['treatment-plan-detail', planId],
@@ -142,7 +144,7 @@ export function TreatmentPlanDetailPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={data.status === 'ACTIVE' || isMutating || ['COMPLETED', 'CANCELLED'].includes(data.status)}
+                    disabled={!canManageTreatmentPlans || data.status === 'ACTIVE' || isMutating || ['COMPLETED', 'CANCELLED'].includes(data.status)}
                     onClick={() => activateMutation.mutate()}
                     className="rounded-lg border border-emerald-700 px-3 py-1 text-xs text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -158,7 +160,7 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={data.status !== 'ACTIVE' || isMutating}
+                    disabled={!canManageTreatmentPlans || data.status !== 'ACTIVE' || isMutating}
                     onClick={() => completeMutation.mutate()}
                     className="rounded-lg border border-cyan-700 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -166,13 +168,16 @@ export function TreatmentPlanDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={['COMPLETED', 'CANCELLED'].includes(data.status) || isMutating}
+                    disabled={!canManageTreatmentPlans || ['COMPLETED', 'CANCELLED'].includes(data.status) || isMutating}
                     onClick={() => cancelMutation.mutate()}
                     className="rounded-lg border border-rose-700 px-3 py-1 text-xs text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Cancel
                   </button>
                 </div>
+                {!canManageTreatmentPlans ? (
+                  <p className="mt-3 text-xs text-amber-300">Your role does not have permission to change treatment plan lifecycle.</p>
+                ) : null}
                 {activateMutation.isError || pauseMutation.isError || completeMutation.isError || cancelMutation.isError ? (
                   <p className="mt-3 text-sm text-rose-400">Failed to update treatment plan status.</p>
                 ) : null}

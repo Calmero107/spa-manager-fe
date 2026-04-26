@@ -113,6 +113,9 @@ export function AppointmentLifecyclePage() {
   const { user } = useAuth()
   const branchId = user?.branchId
   const staffId = user?.staffId
+  const role = user?.role
+  const canOperateAppointments = ['OWNER', 'MANAGER', 'RECEPTIONIST'].includes(role ?? '')
+  const canCompleteSessions = ['OWNER', 'MANAGER', 'TECHNICIAN'].includes(role ?? '')
   const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? persistedFlow?.appointmentId ?? '')
   const [sessionId, setSessionId] = useState(searchParams.get('sessionId') ?? persistedFlow?.sessionId ?? '')
   const [preferredStaffId, setPreferredStaffId] = useState(staffId ?? '')
@@ -261,6 +264,11 @@ export function AppointmentLifecyclePage() {
             <span className="font-mono text-slate-200">sessionId={sessionId || 'missing'}</span> from active context.
           </p>
         </div>
+        {!canOperateAppointments && !canCompleteSessions ? (
+          <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+            Your role does not have permission to operate appointment lifecycle actions.
+          </div>
+        ) : null}
         {!hasBranchContext ? (
           <div className="mb-4 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
             Missing branch context. Please sign in with a user that belongs to a branch before using appointment lifecycle actions.
@@ -343,7 +351,7 @@ export function AppointmentLifecyclePage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={!appointmentId || cancelMutation.isPending || !hasBranchContext || !cancelReason.trim() || !canCancel}
+            disabled={!canOperateAppointments || !appointmentId || cancelMutation.isPending || !hasBranchContext || !cancelReason.trim() || !canCancel}
             onClick={() => cancelMutation.mutate(appointmentId)}
             className="rounded-xl border border-rose-700 px-4 py-3 text-sm text-rose-200 hover:bg-rose-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -352,7 +360,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!appointmentId || checkInMutation.isPending || !hasBranchContext || !canCheckIn}
+            disabled={!canOperateAppointments || !appointmentId || checkInMutation.isPending || !hasBranchContext || !canCheckIn}
             onClick={() => checkInMutation.mutate(appointmentId)}
             className="rounded-xl border border-amber-700 px-4 py-3 text-sm text-amber-200 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -361,7 +369,7 @@ export function AppointmentLifecyclePage() {
 
           <button
             type="button"
-            disabled={!sessionId || completeMutation.isPending || !hasBranchContext || !completeResultNote.trim() || !canComplete}
+            disabled={!canCompleteSessions || !sessionId || completeMutation.isPending || !hasBranchContext || !completeResultNote.trim() || !canComplete}
             onClick={() => completeMutation.mutate(sessionId)}
             className="rounded-xl border border-emerald-700 px-4 py-3 text-sm text-emerald-200 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -453,7 +461,7 @@ export function AppointmentLifecyclePage() {
           <button
             type="button"
             onClick={() => queryMutation.mutate()}
-            disabled={!hasBranchContext || !hasSessionContext || !hasValidDateRange || !canRescheduleCurrentAppointment}
+            disabled={!canOperateAppointments || !hasBranchContext || !hasSessionContext || !hasValidDateRange || !canRescheduleCurrentAppointment}
             className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Query new slots
@@ -462,7 +470,7 @@ export function AppointmentLifecyclePage() {
           {selectedSlot ? (
             <button
               type="button"
-              disabled={lockMutation.isPending || !hasBranchContext || !hasSessionContext || !canRescheduleCurrentAppointment}
+              disabled={!canOperateAppointments || lockMutation.isPending || !hasBranchContext || !hasSessionContext || !canRescheduleCurrentAppointment}
               onClick={() => lockMutation.mutate(selectedSlot.slotId)}
               className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -473,7 +481,7 @@ export function AppointmentLifecyclePage() {
           {canReschedule && selectedSlot && lockInfo ? (
             <button
               type="button"
-              disabled={rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext || !rescheduleReason.trim() || !canRescheduleCurrentAppointment}
+              disabled={!canOperateAppointments || rescheduleMutation.isPending || !hasBranchContext || !hasSessionContext || !rescheduleReason.trim() || !canRescheduleCurrentAppointment}
               onClick={() => rescheduleMutation.mutate({ appointmentId, lockId: lockInfo.lockId, slotId: selectedSlot.slotId })}
               className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
