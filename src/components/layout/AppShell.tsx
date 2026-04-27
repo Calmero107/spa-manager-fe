@@ -1,14 +1,16 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { canManageAccounts, canManageTreatmentPlans, canOperateAppointments, canScheduleSessions } from '@/features/auth/authz'
 import { cn } from '@/lib/cn'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/customers', label: 'Customers' },
-  { to: '/treatment-plans', label: 'Treatment Plans' },
-  { to: '/scheduling', label: 'Scheduling' },
-  { to: '/appointments/detail', label: 'Appointment Detail' },
-  { to: '/appointments/lifecycle', label: 'Appointment Lifecycle' },
+  { to: '/dashboard', label: 'Dashboard', visible: () => true },
+  { to: '/customers', label: 'Customers', visible: () => true },
+  { to: '/treatment-plans', label: 'Treatment Plans', visible: canManageTreatmentPlans },
+  { to: '/scheduling', label: 'Scheduling', visible: canScheduleSessions },
+  { to: '/appointments/detail', label: 'Appointment Detail', visible: canOperateAppointments },
+  { to: '/appointments/lifecycle', label: 'Appointment Lifecycle', visible: canOperateAppointments },
+  { to: '/settings/accounts', label: 'Staff Accounts', visible: canManageAccounts },
 ]
 
 export function AppShell() {
@@ -23,7 +25,7 @@ export function AppShell() {
             <h1 className="mt-2 text-2xl font-semibold">Frontend Base</h1>
           </div>
           <nav className="space-y-2">
-            {navItems.map((item) => (
+            {navItems.filter((item) => item.visible(user?.role)).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

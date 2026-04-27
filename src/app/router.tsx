@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { DashboardPage } from '@/app/DashboardPage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
+import { StaffAccountsPage } from '@/features/auth/pages/StaffAccountsPage'
 import { CustomersPage } from '@/features/customer/pages/CustomersPage'
 import { CustomerCreatePage } from '@/features/customer/pages/CustomerCreatePage'
 import { CustomerDetailPage } from '@/features/customer/pages/CustomerDetailPage'
@@ -31,12 +32,34 @@ export const router = createBrowserRouter([
       { path: 'customers', element: <CustomersPage /> },
       { path: 'customers/new', element: <CustomerCreatePage /> },
       { path: 'customers/:customerId', element: <CustomerDetailPage /> },
-      { path: 'treatment-plans', element: <TreatmentPlansPage /> },
-      { path: 'treatment-plans/new', element: <TreatmentPlanCreatePage /> },
-      { path: 'treatment-plans/:planId', element: <TreatmentPlanDetailPage /> },
-      { path: 'scheduling', element: <SchedulingPage /> },
-      { path: 'appointments/detail', element: <AppointmentDetailPage /> },
-      { path: 'appointments/lifecycle', element: <AppointmentLifecyclePage /> },
+      {
+        path: 'treatment-plans',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlansPage /></ProtectedRoute>,
+      },
+      {
+        path: 'treatment-plans/new',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlanCreatePage /></ProtectedRoute>,
+      },
+      {
+        path: 'treatment-plans/:planId',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlanDetailPage /></ProtectedRoute>,
+      },
+      {
+        path: 'scheduling',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><SchedulingPage /></ProtectedRoute>,
+      },
+      {
+        path: 'appointments/detail',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN']}><AppointmentDetailPage /></ProtectedRoute>,
+      },
+      {
+        path: 'appointments/lifecycle',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN']}><AppointmentLifecyclePage /></ProtectedRoute>,
+      },
+      {
+        path: 'settings/accounts',
+        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}><StaffAccountsPage /></ProtectedRoute>,
+      },
     ],
   },
 ])

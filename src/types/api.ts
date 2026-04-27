@@ -22,6 +22,19 @@ export type LoginResponse = {
   user: AuthUser
 }
 
+export type StaffAccount = {
+  id: string
+  branchId: string
+  staffId: string | null
+  staffName: string | null
+  username: string
+  role: string
+  status: string
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
 export type Customer = {
   id: string
   branchId: string
