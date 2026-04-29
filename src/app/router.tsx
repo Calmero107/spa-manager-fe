@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { DashboardPage } from '@/app/DashboardPage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
+import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage'
 import { StaffAccountsPage } from '@/features/auth/pages/StaffAccountsPage'
 import { CustomersPage } from '@/features/customer/pages/CustomersPage'
 import { CustomerCreatePage } from '@/features/customer/pages/CustomerCreatePage'
@@ -59,6 +60,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings/accounts',
         element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}><StaffAccountsPage /></ProtectedRoute>,
+      },
+      {
+        path: 'settings/password',
+        element: <ProtectedRoute><ChangePasswordPage /></ProtectedRoute>,
       },
     ],
   },

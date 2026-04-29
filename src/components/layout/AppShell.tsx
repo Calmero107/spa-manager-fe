@@ -11,6 +11,7 @@ const navItems = [
   { to: '/appointments/detail', label: 'Appointment Detail', visible: canOperateAppointments },
   { to: '/appointments/lifecycle', label: 'Appointment Lifecycle', visible: canOperateAppointments },
   { to: '/settings/accounts', label: 'Staff Accounts', visible: canManageAccounts },
+  { to: '/settings/password', label: 'Change Password', visible: () => true },
 ]
 
 export function AppShell() {
