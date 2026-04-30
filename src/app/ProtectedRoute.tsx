@@ -1,13 +1,15 @@
 import { Navigate } from 'react-router-dom'
+import { ForbiddenPage } from '@/app/ForbiddenPage'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { hasRole } from '@/features/auth/authz'
 
 type ProtectedRouteProps = {
   children: React.ReactNode
   allowedRoles?: readonly string[]
+  forbiddenMessage?: string
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, allowedRoles, forbiddenMessage }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth()
 
   if (isLoading) {
@@ -19,7 +21,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && !hasRole(user?.role, allowedRoles)) {
-    return <Navigate to="/dashboard" replace />
+    return <ForbiddenPage message={forbiddenMessage} />
   }
 
   return <>{children}</>

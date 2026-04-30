@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { DashboardPage } from '@/app/DashboardPage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
+import { ROLE_GROUPS } from '@/features/auth/authz'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage'
 import { StaffAccountsPage } from '@/features/auth/pages/StaffAccountsPage'
@@ -30,36 +31,45 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'customers', element: <CustomersPage /> },
-      { path: 'customers/new', element: <CustomerCreatePage /> },
-      { path: 'customers/:customerId', element: <CustomerDetailPage /> },
+      {
+        path: 'customers',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.customerManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can access customer management."><CustomersPage /></ProtectedRoute>,
+      },
+      {
+        path: 'customers/new',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.customerManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can create customers."><CustomerCreatePage /></ProtectedRoute>,
+      },
+      {
+        path: 'customers/:customerId',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.customerManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can view customer details."><CustomerDetailPage /></ProtectedRoute>,
+      },
       {
         path: 'treatment-plans',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlansPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.treatmentPlanManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can access treatment plans."><TreatmentPlansPage /></ProtectedRoute>,
       },
       {
         path: 'treatment-plans/new',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlanCreatePage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.treatmentPlanManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can create treatment plans."><TreatmentPlanCreatePage /></ProtectedRoute>,
       },
       {
         path: 'treatment-plans/:planId',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><TreatmentPlanDetailPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.treatmentPlanManagers} forbiddenMessage="Only owner, manager, or receptionist accounts can view treatment plan details."><TreatmentPlanDetailPage /></ProtectedRoute>,
       },
       {
         path: 'scheduling',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST']}><SchedulingPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.schedulingOperators} forbiddenMessage="Only owner, manager, or receptionist accounts can access scheduling."><SchedulingPage /></ProtectedRoute>,
       },
       {
         path: 'appointments/detail',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN']}><AppointmentDetailPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.appointmentViewers} forbiddenMessage="Your current role does not have permission to view appointment details."><AppointmentDetailPage /></ProtectedRoute>,
       },
       {
         path: 'appointments/lifecycle',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN']}><AppointmentLifecyclePage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.appointmentViewers} forbiddenMessage="Your current role does not have permission to access appointment lifecycle pages."><AppointmentLifecyclePage /></ProtectedRoute>,
       },
       {
         path: 'settings/accounts',
-        element: <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}><StaffAccountsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.accountManagers} forbiddenMessage="Only owner and manager accounts can manage staff accounts."><StaffAccountsPage /></ProtectedRoute>,
       },
       {
         path: 'settings/password',
