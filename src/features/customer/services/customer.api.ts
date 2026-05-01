@@ -1,5 +1,5 @@
 import { api } from '@/lib/api'
-import type { ApiResponse, CreateCustomerPayload, Customer } from '@/types/api'
+import type { ApiResponse, CreateCustomerPayload, Customer, UpdateCustomerPayload } from '@/types/api'
 
 export async function getCustomers(branchId: string, q?: string) {
   const search = new URLSearchParams({ branchId })
@@ -18,5 +18,10 @@ export async function getCustomer(customerId: string) {
 
 export async function createCustomer(payload: CreateCustomerPayload) {
   const response = await api.post<ApiResponse<Customer>>('/customers', payload)
+  return response.data.data
+}
+
+export async function updateCustomer(customerId: string, payload: UpdateCustomerPayload) {
+  const response = await api.put<ApiResponse<Customer>>(`/customers/${customerId}`, payload)
   return response.data.data
 }

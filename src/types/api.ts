@@ -51,6 +51,12 @@ export type CreateCustomerPayload = {
   name: string
 }
 
+export type UpdateCustomerPayload = {
+  branchId: string
+  phone: string
+  name: string
+}
+
 export type SessionSummary = {
   id: string
   sequenceNo: number
