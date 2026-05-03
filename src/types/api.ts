@@ -57,6 +57,47 @@ export type UpdateCustomerPayload = {
   name: string
 }
 
+export type CustomerHistory = {
+  customerId: string
+  branchId: string
+  treatmentPlans: {
+    planId: string
+    status: string
+    totalPrice: number
+    createdAt: string
+    updatedAt: string | null
+    version: number
+  }[]
+  sessions: {
+    sessionId: string
+    planId: string
+    sequenceNo: number
+    serviceName: string
+    status: string
+    duration: number
+    price: number
+    createdAt: string
+    updatedAt: string | null
+    version: number
+  }[]
+  appointments: {
+    appointmentId: string
+    sessionId: string
+    planId: string
+    appointmentStatus: string
+    sessionStatus: string
+    staffId: string
+    staffName: string
+    roomId: string
+    roomName: string
+    startTime: string
+    endTime: string
+    createdAt: string
+    updatedAt: string | null
+    version: number
+  }[]
+}
+
 export type SessionSummary = {
   id: string
   sequenceNo: number

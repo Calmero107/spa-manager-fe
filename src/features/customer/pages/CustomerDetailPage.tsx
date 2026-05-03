@@ -6,9 +6,7 @@ import { Link, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { useAuth } from '@/features/auth/hooks/useAuth'
-import { getCustomer, updateCustomer } from '@/features/customer/services/customer.api'
-import { getTreatmentPlans } from '@/features/treatment-plan/services/treatment-plan.api'
+import { getCustomer, getCustomerHistory, updateCustomer } from '@/features/customer/services/customer.api'
 
 const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
@@ -20,8 +18,6 @@ type FormValues = z.infer<typeof schema>
 export function CustomerDetailPage() {
   const { customerId = '' } = useParams()
   const queryClient = useQueryClient()
-  const { user } = useAuth()
-  const branchId = user?.branchId
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -37,10 +33,10 @@ export function CustomerDetailPage() {
     enabled: Boolean(customerId),
   })
 
-  const treatmentPlansQuery = useQuery({
-    queryKey: ['treatment-plans', branchId, customerId, 'customer-history'],
-    queryFn: () => getTreatmentPlans(branchId!, { customerId }),
-    enabled: Boolean(branchId && customerId),
+  const historyQuery = useQuery({
+    queryKey: ['customer-history', customerId],
+    queryFn: () => getCustomerHistory(customerId),
+    enabled: Boolean(customerId),
   })
 
   useEffect(() => {
@@ -60,7 +56,8 @@ export function CustomerDetailPage() {
       })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['customer-detail', customerId] }),
-        queryClient.invalidateQueries({ queryKey: ['customers', branchId] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-history', customerId] }),
+        queryClient.invalidateQueries({ queryKey: ['customers'] }),
       ])
     },
   })
@@ -144,36 +141,100 @@ export function CustomerDetailPage() {
         ) : null}
       </PageCard>
 
-      <PageCard title="Customer history" description="Current treatment plans linked to this customer.">
-        {treatmentPlansQuery.isLoading ? <p className="text-slate-400">Loading customer history...</p> : null}
-        {treatmentPlansQuery.isError ? <p className="text-rose-400">Failed to load customer history.</p> : null}
+      <PageCard title="Customer history" description="Aggregated treatment plan, session, and appointment history for this customer.">
+        {historyQuery.isLoading ? <p className="text-slate-400">Loading customer history...</p> : null}
+        {historyQuery.isError ? <p className="text-rose-400">Failed to load customer history.</p> : null}
 
-        {!treatmentPlansQuery.isLoading && !treatmentPlansQuery.isError && (treatmentPlansQuery.data?.length ?? 0) === 0 ? (
-          <p className="text-slate-400">No treatment plans found for this customer yet.</p>
+        {historyQuery.data ? (
+          <div className="space-y-6">
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-white">Treatment plans</h3>
+                <span className="text-sm text-slate-400">{historyQuery.data.treatmentPlans.length} item(s)</span>
+              </div>
+              {historyQuery.data.treatmentPlans.length === 0 ? <p className="text-slate-400">No treatment plans found.</p> : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                {historyQuery.data.treatmentPlans.map((plan) => (
+                  <Link
+                    key={plan.planId}
+                    to={`/treatment-plans/${plan.planId}`}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-400">Treatment plan</p>
+                        <h3 className="mt-2 break-all text-lg font-semibold text-white">{plan.planId}</h3>
+                      </div>
+                      <StatusBadge value={plan.status} />
+                    </div>
+                    <div className="mt-4 space-y-2 text-sm text-slate-300">
+                      <p>Total price: <span className="text-white">{plan.totalPrice}</span></p>
+                      <p>Created at: <span className="text-white">{new Date(plan.createdAt).toLocaleString()}</span></p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-white">Sessions</h3>
+                <span className="text-sm text-slate-400">{historyQuery.data.sessions.length} item(s)</span>
+              </div>
+              {historyQuery.data.sessions.length === 0 ? <p className="text-slate-400">No sessions found.</p> : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                {historyQuery.data.sessions.map((session) => (
+                  <div key={session.sessionId} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-400">Session #{session.sequenceNo}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-white">{session.serviceName}</h3>
+                      </div>
+                      <StatusBadge value={session.status} />
+                    </div>
+                    <div className="mt-4 space-y-2 text-sm text-slate-300">
+                      <p>Session ID: <span className="font-mono text-slate-400">{session.sessionId}</span></p>
+                      <p>Plan ID: <span className="font-mono text-slate-400">{session.planId}</span></p>
+                      <p>Duration: <span className="text-white">{session.duration} mins</span></p>
+                      <p>Price: <span className="text-white">{session.price}</span></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-white">Appointments</h3>
+                <span className="text-sm text-slate-400">{historyQuery.data.appointments.length} item(s)</span>
+              </div>
+              {historyQuery.data.appointments.length === 0 ? <p className="text-slate-400">No appointments found.</p> : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                {historyQuery.data.appointments.map((appointment) => (
+                  <Link
+                    key={appointment.appointmentId}
+                    to={`/appointments/detail?appointmentId=${appointment.appointmentId}&sessionId=${appointment.sessionId}`}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-400">Appointment</p>
+                        <h3 className="mt-2 break-all text-lg font-semibold text-white">{appointment.appointmentId}</h3>
+                      </div>
+                      <StatusBadge value={appointment.appointmentStatus} />
+                    </div>
+                    <div className="mt-4 space-y-2 text-sm text-slate-300">
+                      <p>Session status: <span className="text-white">{appointment.sessionStatus}</span></p>
+                      <p>Technician: <span className="text-white">{appointment.staffName}</span></p>
+                      <p>Room: <span className="text-white">{appointment.roomName}</span></p>
+                      <p>Window: <span className="text-white">{new Date(appointment.startTime).toLocaleString()} → {new Date(appointment.endTime).toLocaleString()}</span></p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : null}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {treatmentPlansQuery.data?.map((plan) => (
-            <Link
-              key={plan.id}
-              to={`/treatment-plans/${plan.id}`}
-              className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm text-slate-400">Treatment plan</p>
-                  <h3 className="mt-2 break-all text-lg font-semibold text-white">{plan.id}</h3>
-                </div>
-                <StatusBadge value={plan.status} />
-              </div>
-              <div className="mt-4 space-y-2 text-sm text-slate-300">
-                <p>Sessions: <span className="text-white">{plan.sessions.length}</span></p>
-                <p>Total price: <span className="text-white">{plan.totalPrice}</span></p>
-                <p>Created at: <span className="text-white">{new Date(plan.createdAt).toLocaleString()}</span></p>
-              </div>
-            </Link>
-          ))}
-        </div>
       </PageCard>
     </div>
   )
