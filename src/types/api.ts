@@ -40,6 +40,9 @@ export type Customer = {
   branchId: string
   phone: string
   name: string
+  note: string | null
+  warningFlag: boolean
+  warningNote: string | null
   createdAt: string
   updatedAt: string | null
   version: number
@@ -49,12 +52,18 @@ export type CreateCustomerPayload = {
   branchId: string
   phone: string
   name: string
+  note?: string
+  warningFlag?: boolean
+  warningNote?: string
 }
 
 export type UpdateCustomerPayload = {
   branchId: string
   phone: string
   name: string
+  note?: string
+  warningFlag?: boolean
+  warningNote?: string
 }
 
 export type CustomerHistory = {

@@ -73,6 +73,7 @@ export function CustomersPage() {
             <tr>
               <th className="px-4 py-3 text-left">Name</th>
               <th className="px-4 py-3 text-left">Phone</th>
+              <th className="px-4 py-3 text-left">Flags</th>
               <th className="px-4 py-3 text-left">Created</th>
             </tr>
           </thead>
@@ -85,6 +86,15 @@ export function CustomersPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-slate-300">{customer.phone}</td>
+                <td className="px-4 py-3 text-slate-300">
+                  {customer.warningFlag ? (
+                    <span className="inline-flex rounded-full border border-amber-700 bg-amber-950/40 px-3 py-1 text-xs font-medium text-amber-200">
+                      Warning
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-slate-400">{new Date(customer.createdAt).toLocaleString()}</td>
               </tr>
             ))}

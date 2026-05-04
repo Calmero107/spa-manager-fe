@@ -11,6 +11,17 @@ import { getCustomer, getCustomerHistory, updateCustomer } from '@/features/cust
 const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
   name: z.string().min(1, 'Name is required'),
+  note: z.string().optional(),
+  warningFlag: z.boolean(),
+  warningNote: z.string().optional(),
+}).superRefine((values, context) => {
+  if (values.warningFlag && !values.warningNote?.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Warning note is required when warning flag is enabled',
+      path: ['warningNote'],
+    })
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -24,6 +35,9 @@ export function CustomerDetailPage() {
     defaultValues: {
       phone: '',
       name: '',
+      note: '',
+      warningFlag: false,
+      warningNote: '',
     },
   })
 
@@ -39,11 +53,16 @@ export function CustomerDetailPage() {
     enabled: Boolean(customerId),
   })
 
+  const warningFlag = form.watch('warningFlag')
+
   useEffect(() => {
     if (!data) return
     form.reset({
       phone: data.phone,
       name: data.name || '',
+      note: data.note || '',
+      warningFlag: data.warningFlag,
+      warningNote: data.warningNote || '',
     })
   }, [data, form])
 
@@ -53,6 +72,9 @@ export function CustomerDetailPage() {
       form.reset({
         phone: updatedCustomer.phone,
         name: updatedCustomer.name || '',
+        note: updatedCustomer.note || '',
+        warningFlag: updatedCustomer.warningFlag,
+        warningNote: updatedCustomer.warningNote || '',
       })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['customer-detail', customerId] }),
@@ -69,6 +91,13 @@ export function CustomerDetailPage() {
         {isError ? <p className="text-rose-400">Failed to load customer detail.</p> : null}
         {data ? (
           <>
+            {data.warningFlag ? (
+              <div className="mb-5 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-100">
+                <p className="font-medium">Warning flag</p>
+                <p className="mt-1">{data.warningNote || 'This customer has an active warning flag.'}</p>
+              </div>
+            ) : null}
+
             <div className="mb-5 flex flex-wrap justify-end gap-3">
               <Link
                 to={`/treatment-plans?customerId=${data.id}`}
@@ -105,9 +134,13 @@ export function CustomerDetailPage() {
                 <p className="text-sm text-slate-400">Updated at</p>
                 <p className="mt-2 text-sm text-white">{data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '-'}</p>
               </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Warning status</p>
+                <div className="mt-2">{data.warningFlag ? <StatusBadge value="PAUSED" /> : <StatusBadge value="ACTIVE" />}</div>
+              </div>
             </div>
 
-            <form className="mt-6 grid gap-5 md:max-w-xl" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
+            <form className="mt-6 grid gap-5 md:max-w-2xl" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
               <div>
                 <label className="mb-2 block text-sm text-slate-300">Name</label>
                 <input
@@ -124,6 +157,31 @@ export function CustomerDetailPage() {
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
                 />
                 {form.formState.errors.phone ? <p className="mt-2 text-sm text-rose-400">{form.formState.errors.phone.message}</p> : null}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-300">Internal note</label>
+                <textarea
+                  {...form.register('note')}
+                  className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-4">
+                <label className="flex items-center gap-3 text-sm text-amber-100">
+                  <input type="checkbox" {...form.register('warningFlag')} />
+                  Mark this customer with a warning flag
+                </label>
+                {warningFlag ? (
+                  <div className="mt-3">
+                    <label className="mb-2 block text-sm text-slate-300">Warning note</label>
+                    <textarea
+                      {...form.register('warningNote')}
+                      className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                    />
+                    {form.formState.errors.warningNote ? <p className="mt-2 text-sm text-rose-400">{form.formState.errors.warningNote.message}</p> : null}
+                  </div>
+                ) : null}
               </div>
 
               {updateMutation.isError ? <p className="text-sm text-rose-400">Failed to update customer.</p> : null}
