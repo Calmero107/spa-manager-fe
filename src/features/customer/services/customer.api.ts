@@ -1,5 +1,5 @@
 import { api } from '@/lib/api'
-import type { ApiResponse, CreateCustomerPayload, Customer, CustomerHistory, UpdateCustomerPayload } from '@/types/api'
+import type { ApiResponse, CreateCustomerPayload, Customer, CustomerAuditLog, CustomerHistory, UpdateCustomerPayload } from '@/types/api'
 
 export async function getCustomers(branchId: string, q?: string) {
   const search = new URLSearchParams({ branchId })
@@ -18,6 +18,11 @@ export async function getCustomer(customerId: string) {
 
 export async function getCustomerHistory(customerId: string) {
   const response = await api.get<ApiResponse<CustomerHistory>>(`/customers/${customerId}/history`)
+  return response.data.data
+}
+
+export async function getCustomerAuditHistory(customerId: string) {
+  const response = await api.get<ApiResponse<CustomerAuditLog[]>>(`/customers/${customerId}/audit`)
   return response.data.data
 }
 

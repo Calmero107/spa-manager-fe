@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { getCustomer, getCustomerHistory, updateCustomer } from '@/features/customer/services/customer.api'
+import { getCustomer, getCustomerAuditHistory, getCustomerHistory, updateCustomer } from '@/features/customer/services/customer.api'
 
 const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
@@ -53,6 +53,12 @@ export function CustomerDetailPage() {
     enabled: Boolean(customerId),
   })
 
+  const auditQuery = useQuery({
+    queryKey: ['customer-audit-history', customerId],
+    queryFn: () => getCustomerAuditHistory(customerId),
+    enabled: Boolean(customerId),
+  })
+
   const warningFlag = form.watch('warningFlag')
 
   useEffect(() => {
@@ -79,6 +85,7 @@ export function CustomerDetailPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['customer-detail', customerId] }),
         queryClient.invalidateQueries({ queryKey: ['customer-history', customerId] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-audit-history', customerId] }),
         queryClient.invalidateQueries({ queryKey: ['customers'] }),
       ])
     },
@@ -293,6 +300,39 @@ export function CustomerDetailPage() {
             </div>
           </div>
         ) : null}
+      </PageCard>
+
+      <PageCard title="Customer audit history" description="Who changed this customer record and what payload was written.">
+        {auditQuery.isLoading ? <p className="text-slate-400">Loading customer audit history...</p> : null}
+        {auditQuery.isError ? <p className="text-rose-400">Failed to load customer audit history.</p> : null}
+        {auditQuery.data && auditQuery.data.length === 0 ? <p className="text-slate-400">No audit entries found for this customer yet.</p> : null}
+
+        <div className="space-y-4">
+          {auditQuery.data?.map((entry) => {
+            let parsedPayload: unknown = entry.payload
+            try {
+              parsedPayload = JSON.parse(entry.payload)
+            } catch {
+              parsedPayload = entry.payload
+            }
+
+            return (
+              <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-slate-400">{new Date(entry.createdAt).toLocaleString()}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-white">{entry.action}</h3>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                    <p>Account: {entry.performedByAccountId ?? 'system'}</p>
+                    <p>Version: {entry.version}</p>
+                  </div>
+                </div>
+                <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-xs text-slate-300">{typeof parsedPayload === 'string' ? parsedPayload : JSON.stringify(parsedPayload, null, 2)}</pre>
+              </div>
+            )
+          })}
+        </div>
       </PageCard>
     </div>
   )

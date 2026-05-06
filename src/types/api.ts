@@ -66,6 +66,15 @@ export type UpdateCustomerPayload = {
   warningNote?: string
 }
 
+export type CustomerAuditLog = {
+  id: string
+  action: string
+  performedByAccountId: string | null
+  payload: string
+  createdAt: string
+  version: number
+}
+
 export type CustomerHistory = {
   customerId: string
   branchId: string
