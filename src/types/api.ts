@@ -161,6 +161,45 @@ export type Staff = {
   version: number
 }
 
+export type CreateStaffPayload = {
+  branchId: string
+  name: string
+  role: string
+  status: string
+}
+
+export type UpdateStaffPayload = {
+  branchId: string
+  name: string
+  role: string
+  status: string
+}
+
+export type ServiceCatalogItem = {
+  id: string
+  branchId: string
+  name: string
+  duration: number
+  price: number
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
+export type CreateServiceCatalogPayload = {
+  branchId: string
+  name: string
+  duration: number
+  price: number
+}
+
+export type UpdateServiceCatalogPayload = {
+  branchId: string
+  name: string
+  duration: number
+  price: number
+}
+
 export type AvailableSlot = {
   slotId: string
   startTime: string

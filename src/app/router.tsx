@@ -15,6 +15,8 @@ import { TreatmentPlanCreatePage } from '@/features/treatment-plan/pages/Treatme
 import { TreatmentPlanDetailPage } from '@/features/treatment-plan/pages/TreatmentPlanDetailPage'
 import { TreatmentPlansPage } from '@/features/treatment-plan/pages/TreatmentPlansPage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
+import { ServiceCatalogManagementPage } from '@/features/service/pages/ServiceCatalogManagementPage'
+import { StaffManagementPage } from '@/features/staff/pages/StaffManagementPage'
 
 export const router = createBrowserRouter([
   {
@@ -66,6 +68,14 @@ export const router = createBrowserRouter([
       {
         path: 'appointments/lifecycle',
         element: <ProtectedRoute allowedRoles={ROLE_GROUPS.appointmentViewers} forbiddenMessage="Your current role does not have permission to access appointment lifecycle pages."><AppointmentLifecyclePage /></ProtectedRoute>,
+      },
+      {
+        path: 'resources/staff',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.resourceManagers} forbiddenMessage="Only owner and manager accounts can manage staff resources."><StaffManagementPage /></ProtectedRoute>,
+      },
+      {
+        path: 'resources/services',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.resourceManagers} forbiddenMessage="Only owner and manager accounts can manage service catalogs."><ServiceCatalogManagementPage /></ProtectedRoute>,
       },
       {
         path: 'settings/accounts',

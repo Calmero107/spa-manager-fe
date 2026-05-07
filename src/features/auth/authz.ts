@@ -6,6 +6,7 @@ export const ROLE_GROUPS = {
   appointmentOperators: ['OWNER', 'MANAGER', 'RECEPTIONIST'] as const,
   appointmentViewers: ['OWNER', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN'] as const,
   sessionCompletionOperators: ['OWNER', 'MANAGER', 'TECHNICIAN'] as const,
+  resourceManagers: ['OWNER', 'MANAGER'] as const,
 } as const
 
 export function hasRole(userRole: string | null | undefined, allowedRoles: readonly string[]) {
@@ -38,4 +39,8 @@ export function canViewAppointments(userRole: string | null | undefined) {
 
 export function canCompleteSessions(userRole: string | null | undefined) {
   return hasRole(userRole, ROLE_GROUPS.sessionCompletionOperators)
+}
+
+export function canManageResources(userRole: string | null | undefined) {
+  return hasRole(userRole, ROLE_GROUPS.resourceManagers)
 }

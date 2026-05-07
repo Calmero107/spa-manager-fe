@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { canManageAccounts, canManageCustomers, canManageTreatmentPlans, canScheduleSessions, canViewAppointments } from '@/features/auth/authz'
+import { canManageAccounts, canManageCustomers, canManageResources, canManageTreatmentPlans, canScheduleSessions, canViewAppointments } from '@/features/auth/authz'
 import { cn } from '@/lib/cn'
 
 const navItems = [
@@ -10,6 +10,8 @@ const navItems = [
   { to: '/scheduling', label: 'Scheduling', visible: canScheduleSessions },
   { to: '/appointments/detail', label: 'Appointment Detail', visible: canViewAppointments },
   { to: '/appointments/lifecycle', label: 'Appointment Lifecycle', visible: canViewAppointments },
+  { to: '/resources/staff', label: 'Staff Management', visible: canManageResources },
+  { to: '/resources/services', label: 'Service Catalog', visible: canManageResources },
   { to: '/settings/accounts', label: 'Staff Accounts', visible: canManageAccounts },
   { to: '/settings/password', label: 'Change Password', visible: () => true },
 ]
