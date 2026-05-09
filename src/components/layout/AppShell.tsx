@@ -12,6 +12,8 @@ const navItems = [
   { to: '/appointments/lifecycle', label: 'Appointment Lifecycle', visible: canViewAppointments },
   { to: '/resources/staff', label: 'Staff Management', visible: canManageResources },
   { to: '/resources/services', label: 'Service Catalog', visible: canManageResources },
+  { to: '/resources/rooms', label: 'Room Management', visible: canManageResources },
+  { to: '/resources/equipment', label: 'Equipment Management', visible: canManageResources },
   { to: '/settings/accounts', label: 'Staff Accounts', visible: canManageAccounts },
   { to: '/settings/password', label: 'Change Password', visible: () => true },
 ]

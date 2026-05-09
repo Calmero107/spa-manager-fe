@@ -200,6 +200,50 @@ export type UpdateServiceCatalogPayload = {
   price: number
 }
 
+export type Room = {
+  id: string
+  branchId: string
+  name: string
+  status: string
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
+export type CreateRoomPayload = {
+  branchId: string
+  name: string
+  status: string
+}
+
+export type UpdateRoomPayload = {
+  branchId: string
+  name: string
+  status: string
+}
+
+export type Equipment = {
+  id: string
+  branchId: string
+  name: string
+  quantity: number
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
+export type CreateEquipmentPayload = {
+  branchId: string
+  name: string
+  quantity: number
+}
+
+export type UpdateEquipmentPayload = {
+  branchId: string
+  name: string
+  quantity: number
+}
+
 export type AvailableSlot = {
   slotId: string
   startTime: string

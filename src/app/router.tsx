@@ -15,6 +15,8 @@ import { TreatmentPlanCreatePage } from '@/features/treatment-plan/pages/Treatme
 import { TreatmentPlanDetailPage } from '@/features/treatment-plan/pages/TreatmentPlanDetailPage'
 import { TreatmentPlansPage } from '@/features/treatment-plan/pages/TreatmentPlansPage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
+import { EquipmentManagementPage } from '@/features/resource/pages/EquipmentManagementPage'
+import { RoomManagementPage } from '@/features/resource/pages/RoomManagementPage'
 import { ServiceCatalogManagementPage } from '@/features/service/pages/ServiceCatalogManagementPage'
 import { StaffManagementPage } from '@/features/staff/pages/StaffManagementPage'
 
@@ -76,6 +78,14 @@ export const router = createBrowserRouter([
       {
         path: 'resources/services',
         element: <ProtectedRoute allowedRoles={ROLE_GROUPS.resourceManagers} forbiddenMessage="Only owner and manager accounts can manage service catalogs."><ServiceCatalogManagementPage /></ProtectedRoute>,
+      },
+      {
+        path: 'resources/rooms',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.resourceManagers} forbiddenMessage="Only owner and manager accounts can manage rooms."><RoomManagementPage /></ProtectedRoute>,
+      },
+      {
+        path: 'resources/equipment',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.resourceManagers} forbiddenMessage="Only owner and manager accounts can manage equipment."><EquipmentManagementPage /></ProtectedRoute>,
       },
       {
         path: 'settings/accounts',
