@@ -244,6 +244,32 @@ export type UpdateEquipmentPayload = {
   quantity: number
 }
 
+export type StaffSkill = {
+  staffId: string
+  skillCode: string
+  level: number
+}
+
+export type UpsertStaffSkillPayload = {
+  branchId: string
+  skillCode: string
+  level: number
+}
+
+export type ServiceResourceRequirement = {
+  serviceId: string
+  resourceType: string
+  resourceCode: string
+  quantity: number
+}
+
+export type UpsertServiceResourceRequirementPayload = {
+  branchId: string
+  resourceType: string
+  resourceCode: string
+  quantity: number
+}
+
 export type AvailableSlot = {
   slotId: string
   startTime: string
