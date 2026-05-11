@@ -8,6 +8,7 @@ const navItems = [
   { to: '/customers', label: 'Customers', visible: canManageCustomers },
   { to: '/treatment-plans', label: 'Treatment Plans', visible: canManageTreatmentPlans },
   { to: '/scheduling', label: 'Scheduling', visible: canScheduleSessions },
+  { to: '/scheduling/board', label: 'Scheduling Board', visible: canViewAppointments },
   { to: '/appointments/detail', label: 'Appointment Detail', visible: canViewAppointments },
   { to: '/appointments/lifecycle', label: 'Appointment Lifecycle', visible: canViewAppointments },
   { to: '/resources/staff', label: 'Staff Management', visible: canManageResources },

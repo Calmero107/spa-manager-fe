@@ -14,6 +14,7 @@ import { AppointmentLifecyclePage } from '@/features/appointment/pages/Appointme
 import { TreatmentPlanCreatePage } from '@/features/treatment-plan/pages/TreatmentPlanCreatePage'
 import { TreatmentPlanDetailPage } from '@/features/treatment-plan/pages/TreatmentPlanDetailPage'
 import { TreatmentPlansPage } from '@/features/treatment-plan/pages/TreatmentPlansPage'
+import { SchedulingBoardPage } from '@/features/scheduling/pages/SchedulingBoardPage'
 import { SchedulingPage } from '@/features/scheduling/pages/SchedulingPage'
 import { EquipmentManagementPage } from '@/features/resource/pages/EquipmentManagementPage'
 import { RoomManagementPage } from '@/features/resource/pages/RoomManagementPage'
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
       {
         path: 'scheduling',
         element: <ProtectedRoute allowedRoles={ROLE_GROUPS.schedulingOperators} forbiddenMessage="Only owner, manager, or receptionist accounts can access scheduling."><SchedulingPage /></ProtectedRoute>,
+      },
+      {
+        path: 'scheduling/board',
+        element: <ProtectedRoute allowedRoles={ROLE_GROUPS.appointmentViewers} forbiddenMessage="Your current role does not have permission to view the scheduling board."><SchedulingBoardPage /></ProtectedRoute>,
       },
       {
         path: 'appointments/detail',

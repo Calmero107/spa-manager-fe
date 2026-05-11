@@ -312,3 +312,20 @@ export type AppointmentDetail = {
   sessionStatus: string
   version: number
 }
+
+export type AppointmentBoardItem = {
+  appointmentId: string
+  sessionId: string
+  planId: string
+  customerId: string
+  customerName: string | null
+  staffId: string
+  staffName: string
+  roomId: string
+  roomName: string
+  startTime: string
+  endTime: string
+  appointmentStatus: string
+  sessionStatus: string
+  version: number
+}
