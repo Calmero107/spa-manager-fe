@@ -145,6 +145,12 @@ export type CreateTreatmentPlanPayload = {
   serviceIds: string[]
 }
 
+export type UpdateTreatmentPlanPayload = {
+  branchId: string
+  customerId: string
+  serviceIds: string[]
+}
+
 export type EquipmentAllocation = {
   equipmentId: string
   quantity: number

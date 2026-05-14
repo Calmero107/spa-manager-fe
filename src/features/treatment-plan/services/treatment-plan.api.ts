@@ -1,5 +1,5 @@
 import { api } from '@/lib/api'
-import type { ApiResponse, CreateTreatmentPlanPayload, TreatmentPlan } from '@/types/api'
+import type { ApiResponse, CreateTreatmentPlanPayload, TreatmentPlan, UpdateTreatmentPlanPayload } from '@/types/api'
 
 export async function getTreatmentPlans(branchId: string, filters?: { customerId?: string; status?: string }) {
   const search = new URLSearchParams({ branchId })
@@ -21,5 +21,10 @@ export async function getTreatmentPlan(planId: string) {
 
 export async function createTreatmentPlan(payload: CreateTreatmentPlanPayload) {
   const response = await api.post<ApiResponse<TreatmentPlan>>('/treatment-plans', payload)
+  return response.data.data
+}
+
+export async function updateTreatmentPlan(planId: string, payload: UpdateTreatmentPlanPayload) {
+  const response = await api.put<ApiResponse<TreatmentPlan>>(`/treatment-plans/${planId}`, payload)
   return response.data.data
 }
