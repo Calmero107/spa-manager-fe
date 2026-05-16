@@ -151,6 +151,15 @@ export type UpdateTreatmentPlanPayload = {
   serviceIds: string[]
 }
 
+export type TreatmentPlanAuditLog = {
+  id: string
+  action: string
+  performedByAccountId: string | null
+  payload: string
+  createdAt: string
+  version: number
+}
+
 export type EquipmentAllocation = {
   equipmentId: string
   quantity: number

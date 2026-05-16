@@ -6,7 +6,7 @@ import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { getCustomer } from '@/features/customer/services/customer.api'
 import { getServices } from '@/features/service/services/service.api'
-import { getTreatmentPlan, updateTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
+import { getTreatmentPlan, getTreatmentPlanAuditHistory, updateTreatmentPlan } from '@/features/treatment-plan/services/treatment-plan.api'
 import { api } from '@/lib/api'
 import type { ApiResponse, TreatmentPlan } from '@/types/api'
 
@@ -37,6 +37,12 @@ export function TreatmentPlanDetailPage() {
     enabled: Boolean(branchId),
   })
 
+  const auditQuery = useQuery({
+    queryKey: ['treatment-plan-audit-history', planId],
+    queryFn: () => getTreatmentPlanAuditHistory(planId),
+    enabled: Boolean(planId),
+  })
+
   useEffect(() => {
     if (!data) return
     const mappedIds = data.sessions.map((session) => services?.find((service) => service.name === session.serviceName && service.duration === session.duration && Number(service.price) === Number(session.price))?.id).filter(Boolean) as string[]
@@ -45,7 +51,10 @@ export function TreatmentPlanDetailPage() {
 
   const refreshPlanDetail = async (updated: TreatmentPlan) => {
     queryClient.setQueryData(['treatment-plan-detail', planId], updated)
-    await queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['treatment-plans', branchId] }),
+      queryClient.invalidateQueries({ queryKey: ['treatment-plan-audit-history', planId] }),
+    ])
   }
 
   const activateMutation = useMutation({
@@ -214,6 +223,39 @@ export function TreatmentPlanDetailPage() {
             </div>
           </div>
         ) : null}
+      </PageCard>
+
+      <PageCard title="Treatment plan audit timeline" description="Lifecycle actions and management changes recorded for this treatment plan.">
+        {auditQuery.isLoading ? <p className="text-slate-400">Loading treatment plan audit history...</p> : null}
+        {auditQuery.isError ? <p className="text-rose-400">Failed to load treatment plan audit history.</p> : null}
+        {auditQuery.data && auditQuery.data.length === 0 ? <p className="text-slate-400">No audit entries found for this treatment plan yet.</p> : null}
+
+        <div className="space-y-4">
+          {auditQuery.data?.map((entry) => {
+            let parsedPayload: unknown = entry.payload
+            try {
+              parsedPayload = JSON.parse(entry.payload)
+            } catch {
+              parsedPayload = entry.payload
+            }
+
+            return (
+              <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-slate-400">{new Date(entry.createdAt).toLocaleString()}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-white">{entry.action}</h3>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                    <p>Account: {entry.performedByAccountId ?? 'system'}</p>
+                    <p>Version: {entry.version}</p>
+                  </div>
+                </div>
+                <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-xs text-slate-300">{typeof parsedPayload === 'string' ? parsedPayload : JSON.stringify(parsedPayload, null, 2)}</pre>
+              </div>
+            )
+          })}
+        </div>
       </PageCard>
     </div>
   )
