@@ -160,6 +160,57 @@ export type TreatmentPlanAuditLog = {
   version: number
 }
 
+export type OperationalDashboard = {
+  appointmentsToday: {
+    total: number
+    pending: number
+    confirmed: number
+    checkedIn: number
+    completed: number
+    cancelled: number
+    noShow: number
+  }
+  sessions: {
+    total: number
+    notScheduled: number
+    scheduled: number
+    inProgress: number
+    completed: number
+    skipped: number
+  }
+  treatmentPlans: {
+    total: number
+    draft: number
+    active: number
+    paused: number
+    completed: number
+    cancelled: number
+  }
+  staffWorkload: { id: string; name: string; count: number }[]
+  roomWorkload: { id: string; name: string; count: number }[]
+  upcomingAppointments: {
+    appointmentId: string
+    sessionId: string
+    customerId: string
+    customerName: string | null
+    staffName: string
+    roomName: string
+    appointmentStatus: string
+    sessionStatus: string
+    startTime: string
+    endTime: string
+  }[]
+  unscheduledSessions: {
+    sessionId: string
+    planId: string
+    customerId: string
+    customerName: string | null
+    sequenceNo: number
+    serviceName: string
+    sessionStatus: string
+  }[]
+}
+
 export type EquipmentAllocation = {
   equipmentId: string
   quantity: number
