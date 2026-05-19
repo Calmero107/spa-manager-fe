@@ -26,14 +26,29 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageCard title="Operational Dashboard" description="Daily operational snapshot for appointments, sessions, plans, and workload.">
-        <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-          <div>
-            <label className="mb-2 block text-sm text-slate-300">Date</label>
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
+        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-br from-cyan-950/40 to-slate-950/40 p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Demo-ready overview</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Branch operations at a glance</h2>
+            <p className="mt-3 max-w-2xl text-sm text-slate-300">
+              This dashboard is designed to help a receptionist, manager, or owner quickly understand what is happening today: what is booked, what is waiting, and where immediate action is needed.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/scheduling/board" className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300">Open scheduling board</Link>
+              <Link to="/appointments/lifecycle" className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800">Open lifecycle tools</Link>
+              <Link to="/treatment-plans" className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800">Review treatment plans</Link>
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
-            <p>Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span></p>
-            <p className="mt-2">This dashboard is designed for daily operations, not long-term BI reporting.</p>
+
+          <div className="grid gap-4 md:grid-cols-[220px_1fr] xl:grid-cols-1">
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">Date</label>
+              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
+              <p>Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span></p>
+              <p className="mt-2">Built for day-to-day operations and demo storytelling, not long-term BI reporting.</p>
+            </div>
           </div>
         </div>
 
@@ -43,7 +58,7 @@ export function DashboardPage() {
 
       {data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <PageCard title="Appointments today" description={`${data.appointmentsToday.total} total appointment(s)`}>
               <div className="space-y-2 text-sm text-slate-300">
                 <p>Pending: <span className="text-white">{data.appointmentsToday.pending}</span></p>
@@ -74,6 +89,19 @@ export function DashboardPage() {
                 <p>Cancelled: <span className="text-white">{data.treatmentPlans.cancelled}</span></p>
               </div>
             </PageCard>
+
+            <PageCard title="Operational focus" description="Top two places to continue the demo from here.">
+              <div className="space-y-3 text-sm text-slate-300">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                  <p className="text-slate-400">Next likely action</p>
+                  <p className="mt-1 text-white">Go to Scheduling Board if appointments are already present today.</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                  <p className="text-slate-400">Fallback action</p>
+                  <p className="mt-1 text-white">Open Treatment Plans if the demo should emphasize planning and lifecycle management.</p>
+                </div>
+              </div>
+            </PageCard>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
@@ -94,7 +122,7 @@ export function DashboardPage() {
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <Link to={`/scheduling/board`} className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800">Open board</Link>
+                      <Link to="/scheduling/board" className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800">Open board</Link>
                       <Link to={`/appointments/lifecycle?appointmentId=${item.appointmentId}&sessionId=${item.sessionId}`} className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300">Open lifecycle</Link>
                     </div>
                   </div>
@@ -129,9 +157,9 @@ export function DashboardPage() {
             <PageCard title="Staff workload" description="Appointment count per staff for the selected day.">
               <div className="space-y-3">
                 {data.staffWorkload.length === 0 ? <p className="text-slate-400">No staff workload data for this day.</p> : null}
-                {data.staffWorkload.map((item) => (
+                {data.staffWorkload.map((item, index) => (
                   <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3">
-                    <span className="text-slate-200">{item.name}</span>
+                    <span className="text-slate-200">#{index + 1} · {item.name}</span>
                     <span className="text-white">{item.count}</span>
                   </div>
                 ))}
@@ -141,9 +169,9 @@ export function DashboardPage() {
             <PageCard title="Room workload" description="Appointment count per room for the selected day.">
               <div className="space-y-3">
                 {data.roomWorkload.length === 0 ? <p className="text-slate-400">No room workload data for this day.</p> : null}
-                {data.roomWorkload.map((item) => (
+                {data.roomWorkload.map((item, index) => (
                   <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3">
-                    <span className="text-slate-200">{item.name}</span>
+                    <span className="text-slate-200">#{index + 1} · {item.name}</span>
                     <span className="text-white">{item.count}</span>
                   </div>
                 ))}

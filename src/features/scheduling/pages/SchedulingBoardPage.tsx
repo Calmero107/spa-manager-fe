@@ -89,8 +89,28 @@ export function SchedulingBoardPage() {
 
   return (
     <div className="space-y-6">
-      <PageCard title="Scheduling board" description="Operational daily board grouped by staff or room for the active branch.">
-        <div className="mb-5 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <PageCard title="Scheduling Board" description="Operational daily board grouped by staff or room for the active branch.">
+        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-br from-cyan-950/40 to-slate-950/40 p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Operations board</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">See today’s appointments and act fast</h2>
+            <p className="mt-3 max-w-2xl text-sm text-slate-300">
+              This board is designed for operational use during the day. You can group bookings by staff or room, filter the board, and jump directly into lifecycle actions.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/appointments/lifecycle" className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300">Open lifecycle tools</Link>
+              <Link to="/dashboard" className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800">Back to dashboard</Link>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
+            <p>Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span></p>
+            <p className="mt-2">{boardQuery.data ? `${filteredItems.length}/${boardQuery.data.length} appointment(s) shown.` : 'No board data loaded yet.'}</p>
+            <p className="mt-2">Quick check-in is available for confirmed appointments that are already scheduled.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
           <div>
             <label className="mb-2 block text-sm text-slate-300">Date</label>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
@@ -127,15 +147,17 @@ export function SchedulingBoardPage() {
               <option value="CANCELLED">CANCELLED</option>
             </select>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
-            <p>Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span></p>
-            <p className="mt-2">{boardQuery.data ? `${filteredItems.length}/${boardQuery.data.length} appointment(s) shown.` : 'No board data loaded yet.'}</p>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Quick reset</label>
+            <button type="button" onClick={() => { setStaffFilter('ALL'); setRoomFilter('ALL'); setStatusFilter('ALL'); setGroupBy('staff') }} className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-100 hover:bg-slate-800">
+              Reset filters
+            </button>
           </div>
         </div>
 
-        {boardQuery.isLoading ? <p className="text-slate-400">Loading scheduling board...</p> : null}
-        {boardQuery.isError ? <p className="text-rose-400">Failed to load scheduling board.</p> : null}
-        {!boardQuery.isLoading && filteredItems.length === 0 ? <p className="text-slate-400">No appointments match the selected filters.</p> : null}
+        {boardQuery.isLoading ? <p className="mt-4 text-slate-400">Loading scheduling board...</p> : null}
+        {boardQuery.isError ? <p className="mt-4 text-rose-400">Failed to load scheduling board.</p> : null}
+        {!boardQuery.isLoading && filteredItems.length === 0 ? <p className="mt-4 text-slate-400">No appointments match the selected filters.</p> : null}
       </PageCard>
 
       <div className="grid gap-6 xl:grid-cols-2">
