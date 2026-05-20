@@ -6,11 +6,14 @@ import { Link, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { getCustomer, getCustomerAuditHistory, getCustomerHistory, updateCustomer } from '@/features/customer/services/customer.api'
 
 const schema = z.object({
-  phone: z.string().min(1, 'Phone is required'),
-  name: z.string().min(1, 'Name is required'),
+  phone: z.string().min(1, 'Vui lòng nhập số điện thoại'),
+  name: z.string().min(1, 'Vui lòng nhập tên'),
   note: z.string().optional(),
   warningFlag: z.boolean(),
   warningNote: z.string().optional(),
@@ -18,7 +21,7 @@ const schema = z.object({
   if (values.warningFlag && !values.warningNote?.trim()) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Warning note is required when warning flag is enabled',
+      message: 'Vui lòng nhập ghi chú cảnh báo',
       path: ['warningNote'],
     })
   }
@@ -32,16 +35,10 @@ export function CustomerDetailPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      phone: '',
-      name: '',
-      note: '',
-      warningFlag: false,
-      warningNote: '',
-    },
+    defaultValues: { phone: '', name: '', note: '', warningFlag: false, warningNote: '' },
   })
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['customer-detail', customerId],
     queryFn: () => getCustomer(customerId),
     enabled: Boolean(customerId),
@@ -63,25 +60,13 @@ export function CustomerDetailPage() {
 
   useEffect(() => {
     if (!data) return
-    form.reset({
-      phone: data.phone,
-      name: data.name || '',
-      note: data.note || '',
-      warningFlag: data.warningFlag,
-      warningNote: data.warningNote || '',
-    })
+    form.reset({ phone: data.phone, name: data.name || '', note: data.note || '', warningFlag: data.warningFlag, warningNote: data.warningNote || '' })
   }, [data, form])
 
   const updateMutation = useMutation({
     mutationFn: (values: FormValues) => updateCustomer(customerId, { branchId: data!.branchId, ...values }),
     onSuccess: async (updatedCustomer) => {
-      form.reset({
-        phone: updatedCustomer.phone,
-        name: updatedCustomer.name || '',
-        note: updatedCustomer.note || '',
-        warningFlag: updatedCustomer.warningFlag,
-        warningNote: updatedCustomer.warningNote || '',
-      })
+      form.reset({ phone: updatedCustomer.phone, name: updatedCustomer.name || '', note: updatedCustomer.note || '', warningFlag: updatedCustomer.warningFlag, warningNote: updatedCustomer.warningNote || '' })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['customer-detail', customerId] }),
         queryClient.invalidateQueries({ queryKey: ['customer-history', customerId] }),
@@ -92,207 +77,150 @@ export function CustomerDetailPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <PageCard title="Customer detail" description="View, update, and navigate the current customer context.">
-        {isLoading ? <p className="text-slate-400">Loading customer detail...</p> : null}
-        {isError ? <p className="text-rose-400">Failed to load customer detail.</p> : null}
+    <div className="space-y-8">
+      <PageCard title="Chi tiết khách hàng">
+        {isLoading ? <LoadingSpinner message="Đang tải thông tin khách hàng..." /> : null}
+        {isError ? <ErrorAlert message="Không thể tải thông tin khách hàng." onRetry={() => refetch()} /> : null}
         {data ? (
           <>
             {data.warningFlag ? (
-              <div className="mb-5 rounded-xl border border-amber-800 bg-amber-950/20 px-4 py-3 text-sm text-amber-100">
-                <p className="font-medium">Warning flag</p>
-                <p className="mt-1">{data.warningNote || 'This customer has an active warning flag.'}</p>
+              <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm">
+                <p className="font-semibold text-amber-800">⚠ Khách hàng có cảnh báo</p>
+                <p className="mt-1 text-amber-700">{data.warningNote || 'Khách hàng này có cờ cảnh báo đang hoạt động.'}</p>
               </div>
             ) : null}
 
-            <div className="mb-5 flex flex-wrap justify-end gap-3">
-              <Link
-                to={`/treatment-plans?customerId=${data.id}`}
-                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-800"
-              >
-                View treatment plans for this customer
+            <div className="mb-6 flex flex-wrap justify-end gap-3">
+              <Link to={`/treatment-plans?customerId=${data.id}`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+                Xem liệu trình
               </Link>
-              <Link
-                to={`/treatment-plans/new?customerId=${data.id}`}
-                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-300"
-              >
-                Create treatment plan for this customer
+              <Link to={`/treatment-plans/new?customerId=${data.id}`} className="rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700">
+                + Tạo liệu trình
               </Link>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Customer ID</p>
-                <p className="mt-2 break-all text-sm text-white">{data.id}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Ngày tạo</p>
+                <p className="mt-2 text-sm font-medium text-slate-900">{new Date(data.createdAt).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Branch ID</p>
-                <p className="mt-2 break-all text-sm text-white">{data.branchId}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Cập nhật lần cuối</p>
+                <p className="mt-2 text-sm font-medium text-slate-900">{data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '—'}</p>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Version</p>
-                <p className="mt-2 text-sm text-white">{data.version}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Created at</p>
-                <p className="mt-2 text-sm text-white">{new Date(data.createdAt).toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Updated at</p>
-                <p className="mt-2 text-sm text-white">{data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '-'}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Warning status</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Trạng thái cảnh báo</p>
                 <div className="mt-2">{data.warningFlag ? <StatusBadge value="PAUSED" /> : <StatusBadge value="ACTIVE" />}</div>
               </div>
             </div>
 
-            <form className="mt-6 grid gap-5 md:max-w-2xl" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
+            <form className="mt-8 grid gap-5 md:max-w-2xl" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
               <div>
-                <label className="mb-2 block text-sm text-slate-300">Name</label>
-                <input
-                  {...form.register('name')}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                />
-                {form.formState.errors.name ? <p className="mt-2 text-sm text-rose-400">{form.formState.errors.name.message}</p> : null}
+                <label className="mb-2 block text-sm font-medium text-slate-700">Tên khách hàng</label>
+                <input {...form.register('name')} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" />
+                {form.formState.errors.name ? <p className="mt-2 text-sm text-rose-600">{form.formState.errors.name.message}</p> : null}
               </div>
-
               <div>
-                <label className="mb-2 block text-sm text-slate-300">Phone</label>
-                <input
-                  {...form.register('phone')}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                />
-                {form.formState.errors.phone ? <p className="mt-2 text-sm text-rose-400">{form.formState.errors.phone.message}</p> : null}
+                <label className="mb-2 block text-sm font-medium text-slate-700">Số điện thoại</label>
+                <input {...form.register('phone')} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" />
+                {form.formState.errors.phone ? <p className="mt-2 text-sm text-rose-600">{form.formState.errors.phone.message}</p> : null}
               </div>
-
               <div>
-                <label className="mb-2 block text-sm text-slate-300">Internal note</label>
-                <textarea
-                  {...form.register('note')}
-                  className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                />
+                <label className="mb-2 block text-sm font-medium text-slate-700">Ghi chú nội bộ</label>
+                <textarea {...form.register('note')} className="min-h-24 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" />
               </div>
-
-              <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-4">
-                <label className="flex items-center gap-3 text-sm text-amber-100">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                <label className="flex items-center gap-3 text-sm font-medium text-amber-800">
                   <input type="checkbox" {...form.register('warningFlag')} />
-                  Mark this customer with a warning flag
+                  Đánh dấu khách hàng có cảnh báo
                 </label>
                 {warningFlag ? (
-                  <div className="mt-3">
-                    <label className="mb-2 block text-sm text-slate-300">Warning note</label>
-                    <textarea
-                      {...form.register('warningNote')}
-                      className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                    />
-                    {form.formState.errors.warningNote ? <p className="mt-2 text-sm text-rose-400">{form.formState.errors.warningNote.message}</p> : null}
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">Ghi chú cảnh báo</label>
+                    <textarea {...form.register('warningNote')} className="min-h-24 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" />
+                    {form.formState.errors.warningNote ? <p className="mt-2 text-sm text-rose-600">{form.formState.errors.warningNote.message}</p> : null}
                   </div>
                 ) : null}
               </div>
-
-              {updateMutation.isError ? <p className="text-sm text-rose-400">Failed to update customer.</p> : null}
-              {updateMutation.isSuccess ? <p className="text-sm text-emerald-300">Customer updated successfully.</p> : null}
-
-              <button
-                type="submit"
-                disabled={updateMutation.isPending}
-                className="rounded-xl bg-cyan-400 px-4 py-3 font-medium text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {updateMutation.isPending ? 'Saving...' : 'Save customer changes'}
+              {updateMutation.isError ? <ErrorAlert message="Cập nhật khách hàng thất bại." /> : null}
+              {updateMutation.isSuccess ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Cập nhật thành công!</div> : null}
+              <button type="submit" disabled={updateMutation.isPending} className="rounded-xl bg-cyan-600 px-4 py-3.5 font-semibold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60">
+                {updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
               </button>
             </form>
           </>
         ) : null}
       </PageCard>
 
-      <PageCard title="Customer history" description="Aggregated treatment plan, session, and appointment history for this customer.">
-        {historyQuery.isLoading ? <p className="text-slate-400">Loading customer history...</p> : null}
-        {historyQuery.isError ? <p className="text-rose-400">Failed to load customer history.</p> : null}
-
+      <PageCard title="Lịch sử khách hàng">
+        {historyQuery.isLoading ? <LoadingSpinner message="Đang tải lịch sử..." /> : null}
+        {historyQuery.isError ? <ErrorAlert message="Không thể tải lịch sử khách hàng." onRetry={() => historyQuery.refetch()} /> : null}
         {historyQuery.data ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">Treatment plans</h3>
-                <span className="text-sm text-slate-400">{historyQuery.data.treatmentPlans.length} item(s)</span>
+                <h3 className="text-lg font-semibold text-slate-900">Liệu trình</h3>
+                <span className="text-sm text-slate-500">{historyQuery.data.treatmentPlans.length} mục</span>
               </div>
-              {historyQuery.data.treatmentPlans.length === 0 ? <p className="text-slate-400">No treatment plans found.</p> : null}
+              {historyQuery.data.treatmentPlans.length === 0 ? <EmptyState message="Chưa có liệu trình nào." /> : null}
               <div className="grid gap-4 md:grid-cols-2">
                 {historyQuery.data.treatmentPlans.map((plan) => (
-                  <Link
-                    key={plan.planId}
-                    to={`/treatment-plans/${plan.planId}`}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
-                  >
+                  <Link key={plan.planId} to={`/treatment-plans/${plan.planId}`} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-cyan-300 hover:shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm text-slate-400">Treatment plan</p>
-                        <h3 className="mt-2 break-all text-lg font-semibold text-white">{plan.planId}</h3>
+                        <p className="text-sm font-medium text-slate-900">Liệu trình</p>
+                        <p className="mt-1 text-sm text-slate-600">Tổng giá: {plan.totalPrice}</p>
                       </div>
                       <StatusBadge value={plan.status} />
                     </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-300">
-                      <p>Total price: <span className="text-white">{plan.totalPrice}</span></p>
-                      <p>Created at: <span className="text-white">{new Date(plan.createdAt).toLocaleString()}</span></p>
-                    </div>
+                    <p className="mt-3 text-xs text-slate-500">Ngày tạo: {new Date(plan.createdAt).toLocaleString()}</p>
                   </Link>
                 ))}
               </div>
             </div>
-
             <div>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">Sessions</h3>
-                <span className="text-sm text-slate-400">{historyQuery.data.sessions.length} item(s)</span>
+                <h3 className="text-lg font-semibold text-slate-900">Các buổi</h3>
+                <span className="text-sm text-slate-500">{historyQuery.data.sessions.length} mục</span>
               </div>
-              {historyQuery.data.sessions.length === 0 ? <p className="text-slate-400">No sessions found.</p> : null}
+              {historyQuery.data.sessions.length === 0 ? <EmptyState message="Chưa có buổi dịch vụ nào." /> : null}
               <div className="grid gap-4 md:grid-cols-2">
                 {historyQuery.data.sessions.map((session) => (
-                  <div key={session.sessionId} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                  <div key={session.sessionId} className="rounded-2xl border border-slate-200 bg-white p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm text-slate-400">Session #{session.sequenceNo}</p>
-                        <h3 className="mt-2 text-lg font-semibold text-white">{session.serviceName}</h3>
+                        <p className="text-sm text-slate-500">Buổi #{session.sequenceNo}</p>
+                        <h3 className="mt-1 text-base font-semibold text-slate-900">{session.serviceName}</h3>
                       </div>
                       <StatusBadge value={session.status} />
                     </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-300">
-                      <p>Session ID: <span className="font-mono text-slate-400">{session.sessionId}</span></p>
-                      <p>Plan ID: <span className="font-mono text-slate-400">{session.planId}</span></p>
-                      <p>Duration: <span className="text-white">{session.duration} mins</span></p>
-                      <p>Price: <span className="text-white">{session.price}</span></p>
+                    <div className="mt-3 space-y-1 text-sm text-slate-600">
+                      <p>Thời lượng: <span className="text-slate-900">{session.duration} phút</span></p>
+                      <p>Giá: <span className="text-slate-900">{session.price}</span></p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
             <div>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">Appointments</h3>
-                <span className="text-sm text-slate-400">{historyQuery.data.appointments.length} item(s)</span>
+                <h3 className="text-lg font-semibold text-slate-900">Lịch hẹn</h3>
+                <span className="text-sm text-slate-500">{historyQuery.data.appointments.length} mục</span>
               </div>
-              {historyQuery.data.appointments.length === 0 ? <p className="text-slate-400">No appointments found.</p> : null}
+              {historyQuery.data.appointments.length === 0 ? <EmptyState message="Chưa có lịch hẹn nào." /> : null}
               <div className="grid gap-4 md:grid-cols-2">
                 {historyQuery.data.appointments.map((appointment) => (
-                  <Link
-                    key={appointment.appointmentId}
-                    to={`/appointments/detail?appointmentId=${appointment.appointmentId}&sessionId=${appointment.sessionId}`}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700"
-                  >
+                  <Link key={appointment.appointmentId} to={`/appointments/detail?appointmentId=${appointment.appointmentId}&sessionId=${appointment.sessionId}`} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-cyan-300 hover:shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm text-slate-400">Appointment</p>
-                        <h3 className="mt-2 break-all text-lg font-semibold text-white">{appointment.appointmentId}</h3>
+                        <p className="text-sm font-medium text-slate-900">Lịch hẹn</p>
                       </div>
                       <StatusBadge value={appointment.appointmentStatus} />
                     </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-300">
-                      <p>Session status: <span className="text-white">{appointment.sessionStatus}</span></p>
-                      <p>Technician: <span className="text-white">{appointment.staffName}</span></p>
-                      <p>Room: <span className="text-white">{appointment.roomName}</span></p>
-                      <p>Window: <span className="text-white">{new Date(appointment.startTime).toLocaleString()} → {new Date(appointment.endTime).toLocaleString()}</span></p>
+                    <div className="mt-3 space-y-1 text-sm text-slate-600">
+                      <p>Kỹ thuật viên: <span className="text-slate-900">{appointment.staffName}</span></p>
+                      <p>Phòng: <span className="text-slate-900">{appointment.roomName}</span></p>
+                      <p>Thời gian: <span className="text-slate-900">{new Date(appointment.startTime).toLocaleString()} → {new Date(appointment.endTime).toLocaleString()}</span></p>
                     </div>
                   </Link>
                 ))}
@@ -302,36 +230,21 @@ export function CustomerDetailPage() {
         ) : null}
       </PageCard>
 
-      <PageCard title="Customer audit history" description="Who changed this customer record and what payload was written.">
-        {auditQuery.isLoading ? <p className="text-slate-400">Loading customer audit history...</p> : null}
-        {auditQuery.isError ? <p className="text-rose-400">Failed to load customer audit history.</p> : null}
-        {auditQuery.data && auditQuery.data.length === 0 ? <p className="text-slate-400">No audit entries found for this customer yet.</p> : null}
-
+      <PageCard title="Lịch sử thay đổi">
+        {auditQuery.isLoading ? <LoadingSpinner message="Đang tải lịch sử thay đổi..." /> : null}
+        {auditQuery.isError ? <ErrorAlert message="Không thể tải lịch sử thay đổi." onRetry={() => auditQuery.refetch()} /> : null}
+        {auditQuery.data && auditQuery.data.length === 0 ? <EmptyState message="Chưa có lịch sử thay đổi nào." /> : null}
         <div className="space-y-4">
-          {auditQuery.data?.map((entry) => {
-            let parsedPayload: unknown = entry.payload
-            try {
-              parsedPayload = JSON.parse(entry.payload)
-            } catch {
-              parsedPayload = entry.payload
-            }
-
-            return (
-              <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-slate-400">{new Date(entry.createdAt).toLocaleString()}</p>
-                    <h3 className="mt-2 text-lg font-semibold text-white">{entry.action}</h3>
-                  </div>
-                  <div className="text-right text-xs text-slate-400">
-                    <p>Account: {entry.performedByAccountId ?? 'system'}</p>
-                    <p>Version: {entry.version}</p>
-                  </div>
+          {auditQuery.data?.map((entry) => (
+            <div key={entry.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-slate-500">{new Date(entry.createdAt).toLocaleString()}</p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">{entry.action}</h3>
                 </div>
-                <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-xs text-slate-300">{typeof parsedPayload === 'string' ? parsedPayload : JSON.stringify(parsedPayload, null, 2)}</pre>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </PageCard>
     </div>

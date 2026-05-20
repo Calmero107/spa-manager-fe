@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, allowedRoles, forbiddenMessage }: Pro
   const { isAuthenticated, isLoading, user } = useAuth()
 
   if (isLoading) {
-    return <div className="grid min-h-screen place-items-center bg-slate-950 text-slate-50">Loading...</div>
+    return <div className="grid min-h-screen place-items-center bg-slate-50 text-slate-900">Đang tải...</div>
   }
 
   if (!isAuthenticated) {

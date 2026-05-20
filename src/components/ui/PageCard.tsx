@@ -1,9 +1,8 @@
-export function PageCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+export function PageCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-slate-950/20">
-      <div className="mb-5">
-        <h2 className="text-xl font-semibold text-white">{title}</h2>
-        {description ? <p className="mt-1 text-sm text-slate-400">{description}</p> : null}
+    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/50">
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
       </div>
       {children}
     </section>

@@ -5,14 +5,12 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { Tabs } from '@/components/ui/Tabs'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { createRoom, getRooms, updateRoom } from '@/features/resource/services/room.api'
 
-const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  status: z.string().min(1, 'Status is required'),
-})
-
+const schema = z.object({ name: z.string().min(1, 'Vui lòng nhập tên phòng'), status: z.string().min(1, 'Vui lòng chọn trạng thái') })
 type FormValues = z.infer<typeof schema>
 const statuses = ['ACTIVE', 'INACTIVE'] as const
 
@@ -32,40 +30,45 @@ export function RoomManagementPage() {
   const selectedRoom = roomsQuery.data?.find((item) => item.id === selectedRoomId)
 
   return (
-    <div className="space-y-6">
-      <PageCard title="Room management" description="Create and update rooms for the active branch.">
-        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">Using <span className="font-mono text-slate-200">branchId={branchId ?? 'missing'}</span>.</div>
-        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-4">
+    <div className="space-y-8">
+      <PageCard title="Quản lý phòng">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-3">
             {roomsQuery.data?.map((room) => (
-              <button key={room.id} type="button" onClick={() => { setSelectedRoomId(room.id); updateForm.reset({ name: room.name, status: room.status }) }} className={`w-full rounded-2xl border p-5 text-left transition ${selectedRoomId === room.id ? 'border-cyan-400 bg-cyan-950/20' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'}`}>
-                <div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-semibold text-white">{room.name}</h3><p className="mt-1 text-sm text-slate-400">{room.id}</p></div><StatusBadge value={room.status} /></div>
+              <button key={room.id} type="button" onClick={() => { setSelectedRoomId(room.id); updateForm.reset({ name: room.name, status: room.status }) }}
+                className={`w-full rounded-2xl border p-5 text-left transition ${selectedRoomId === room.id ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                <div className="flex items-start justify-between gap-3"><h3 className="text-base font-semibold text-slate-900">{room.name}</h3><StatusBadge value={room.status} /></div>
               </button>
             ))}
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-sm text-slate-300"><p className="font-medium text-white">Selected room</p>{selectedRoom ? <p className="mt-2">{selectedRoom.name}</p> : <p className="mt-2 text-slate-400">Select a room to edit.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm">
+            <p className="font-semibold text-slate-900">Phòng đang chọn</p>
+            {selectedRoom ? <p className="mt-2 text-slate-600">{selectedRoom.name}</p> : <p className="mt-2 text-slate-500">Chọn phòng để chỉnh sửa.</p>}
+          </div>
         </div>
       </PageCard>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <PageCard title="Create room" description="Add a new room resource.">
-          <form className="space-y-4" onSubmit={createForm.handleSubmit((values) => createMutation.mutate(values))}>
-            <input {...createForm.register('name')} placeholder="Room name" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
-            <select {...createForm.register('status')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400">{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
-            {createMutation.isError ? <p className="text-sm text-rose-400">Failed to create room.</p> : null}
-            <button type="submit" disabled={createMutation.isPending || !branchId} className="w-full rounded-xl bg-cyan-400 px-4 py-3 font-medium text-slate-950 hover:bg-cyan-300 disabled:opacity-60">{createMutation.isPending ? 'Creating...' : 'Create room'}</button>
-          </form>
-        </PageCard>
-        <PageCard title="Update room" description="Update the selected room resource.">
-          <form className="space-y-4" onSubmit={updateForm.handleSubmit((values) => updateMutation.mutate(values))}>
-            <input {...updateForm.register('name')} placeholder="Room name" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
-            <select {...updateForm.register('status')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400">{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
-            {updateMutation.isError ? <p className="text-sm text-rose-400">Failed to update room.</p> : null}
-            {updateMutation.isSuccess ? <p className="text-sm text-emerald-300">Room updated successfully.</p> : null}
-            <button type="submit" disabled={updateMutation.isPending || !selectedRoomId} className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-medium text-slate-950 hover:bg-emerald-300 disabled:opacity-60">{updateMutation.isPending ? 'Saving...' : 'Save room changes'}</button>
-          </form>
-        </PageCard>
-      </div>
+      <PageCard title="Thao tác phòng">
+        <Tabs tabs={[
+          { key: 'create', label: 'Thêm mới', content: (
+            <form className="space-y-4" onSubmit={createForm.handleSubmit((values) => createMutation.mutate(values))}>
+              <div><label className="mb-2 block text-sm font-medium text-slate-700">Tên phòng</label><input {...createForm.register('name')} placeholder="Nhập tên phòng" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" /></div>
+              <div><label className="mb-2 block text-sm font-medium text-slate-700">Trạng thái</label><select {...createForm.register('status')} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600">{statuses.map((s) => <option key={s} value={s}>{s === 'ACTIVE' ? 'Hoạt động' : 'Ngưng hoạt động'}</option>)}</select></div>
+              {createMutation.isError ? <ErrorAlert message="Thêm phòng thất bại." /> : null}
+              <button type="submit" disabled={createMutation.isPending || !branchId} className="w-full rounded-xl bg-cyan-600 px-4 py-3.5 font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60">{createMutation.isPending ? 'Đang tạo...' : 'Thêm phòng'}</button>
+            </form>
+          )},
+          { key: 'update', label: 'Chỉnh sửa', disabled: !selectedRoomId, content: (
+            <form className="space-y-4" onSubmit={updateForm.handleSubmit((values) => updateMutation.mutate(values))}>
+              <div><label className="mb-2 block text-sm font-medium text-slate-700">Tên phòng</label><input {...updateForm.register('name')} placeholder="Nhập tên phòng" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600" /></div>
+              <div><label className="mb-2 block text-sm font-medium text-slate-700">Trạng thái</label><select {...updateForm.register('status')} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600">{statuses.map((s) => <option key={s} value={s}>{s === 'ACTIVE' ? 'Hoạt động' : 'Ngưng hoạt động'}</option>)}</select></div>
+              {updateMutation.isError ? <ErrorAlert message="Cập nhật phòng thất bại." /> : null}
+              {updateMutation.isSuccess ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Cập nhật thành công!</div> : null}
+              <button type="submit" disabled={updateMutation.isPending || !selectedRoomId} className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">{updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
+            </form>
+          )},
+        ]} />
+      </PageCard>
     </div>
   )
 }

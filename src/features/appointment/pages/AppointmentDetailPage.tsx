@@ -3,130 +3,51 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageCard } from '@/components/ui/PageCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { getAppointmentDetail } from '@/features/appointment/services/appointment.api'
 import { appointmentFlowStorage } from '@/lib/appointment-flow-storage'
 
 export function AppointmentDetailPage() {
   const [searchParams] = useSearchParams()
   const stored = appointmentFlowStorage.get()
-
   const appointmentId = searchParams.get('appointmentId') ?? stored?.appointmentId ?? ''
   const fallbackSessionId = searchParams.get('sessionId') ?? stored?.sessionId ?? ''
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['appointment-detail', appointmentId],
-    queryFn: () => getAppointmentDetail(appointmentId),
-    enabled: Boolean(appointmentId),
-  })
-
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['appointment-detail', appointmentId], queryFn: () => getAppointmentDetail(appointmentId), enabled: Boolean(appointmentId) })
   const effectiveSessionId = data?.sessionId ?? fallbackSessionId
   const canOpenLifecycle = Boolean(appointmentId && effectiveSessionId)
   const canCheckIn = data?.status === 'CONFIRMED' && data.sessionStatus === 'SCHEDULED'
   const canComplete = data?.status === 'CHECKED_IN' && data.sessionStatus === 'IN_PROGRESS'
   const canReschedule = data?.status === 'CONFIRMED' && data.sessionStatus === 'SCHEDULED'
-
-  useEffect(() => {
-    if (appointmentId && effectiveSessionId) {
-      appointmentFlowStorage.set({ appointmentId, sessionId: effectiveSessionId })
-    }
-  }, [appointmentId, effectiveSessionId])
+  useEffect(() => { if (appointmentId && effectiveSessionId) appointmentFlowStorage.set({ appointmentId, sessionId: effectiveSessionId }) }, [appointmentId, effectiveSessionId])
 
   return (
-    <div className="space-y-6">
-      <PageCard
-        title="Appointment detail"
-        description="Server-backed appointment detail mapped to GET /appointments/{appointmentId}."
-      >
-        {!appointmentId ? (
-          <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-200">
-            No appointment context found yet. Complete a scheduling flow first, then open this page again.
-          </div>
-        ) : null}
-
-        {isLoading ? <p className="text-slate-400">Loading appointment detail...</p> : null}
-        {isError ? <p className="text-rose-400">Failed to load appointment detail from backend.</p> : null}
-
+    <div className="space-y-8">
+      <PageCard title="Chi tiết lịch hẹn">
+        {!appointmentId ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">Chưa có thông tin lịch hẹn. Vui lòng hoàn thành quy trình đặt lịch trước.</div> : null}
+        {isLoading ? <LoadingSpinner message="Đang tải chi tiết lịch hẹn..." /> : null}
+        {isError ? <ErrorAlert message="Không thể tải chi tiết lịch hẹn." onRetry={() => refetch()} /> : null}
         {data ? (
-          <div className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Appointment ID</p>
-                <p className="mt-2 break-all text-sm text-white">{data.id}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Session ID</p>
-                <p className="mt-2 break-all text-sm text-white">{data.sessionId}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Appointment status</p>
-                <div className="mt-2">
-                  <StatusBadge value={data.status} />
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Session status</p>
-                <div className="mt-2">
-                  <StatusBadge value={data.sessionStatus} />
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Staff</p>
-                <p className="mt-2 text-sm text-white">{data.staffName}</p>
-                <p className="mt-1 break-all text-xs text-slate-400">{data.staffId}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Room</p>
-                <p className="mt-2 text-sm text-white">{data.roomName}</p>
-                <p className="mt-1 break-all text-xs text-slate-400">{data.roomId}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Start time</p>
-                <p className="mt-2 text-sm text-white">{new Date(data.startTime).toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">End time</p>
-                <p className="mt-2 text-sm text-white">{new Date(data.endTime).toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Branch ID</p>
-                <p className="mt-2 break-all text-sm text-white">{data.branchId}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Version</p>
-                <p className="mt-2 text-sm text-white">{data.version}</p>
-              </div>
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Trạng thái lịch hẹn</p><div className="mt-2"><StatusBadge value={data.status} /></div></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Trạng thái buổi</p><div className="mt-2"><StatusBadge value={data.sessionStatus} /></div></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Nhân viên</p><p className="mt-2 font-medium text-slate-900">{data.staffName}</p></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Phòng</p><p className="mt-2 font-medium text-slate-900">{data.roomName}</p></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Bắt đầu</p><p className="mt-2 font-medium text-slate-900">{new Date(data.startTime).toLocaleString()}</p></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-500">Kết thúc</p><p className="mt-2 font-medium text-slate-900">{new Date(data.endTime).toLocaleString()}</p></div>
             </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4 text-sm text-slate-300">
-              <p className="mb-3 font-medium text-white">Suggested next action</p>
-              {canComplete ? (
-                <p>Session is in progress. The next expected step is to complete the session in the lifecycle page.</p>
-              ) : canCheckIn ? (
-                <p>Appointment is confirmed and ready for check-in.</p>
-              ) : canReschedule ? (
-                <p>Appointment is still reschedulable if the customer requests a change.</p>
-              ) : (
-                <p>No direct action is recommended from the current state. Review lifecycle history or return to scheduling context.</p>
-              )}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm">
+              <p className="mb-3 font-semibold text-slate-900">Hành động tiếp theo</p>
+              {canComplete ? <p className="text-slate-600">Buổi đang thực hiện. Hãy hoàn thành ở trang Quản lý lịch hẹn.</p> : canCheckIn ? <p className="text-slate-600">Lịch hẹn đã xác nhận, sẵn sàng check-in.</p> : canReschedule ? <p className="text-slate-600">Có thể đổi lịch nếu khách hàng yêu cầu.</p> : <p className="text-slate-600">Không có hành động trực tiếp nào. Xem lịch sử hoặc quay lại đặt lịch.</p>}
             </div>
           </div>
         ) : null}
       </PageCard>
-
-      <PageCard title="Next action" description="Jump back into the appointment lifecycle flow using the current server-backed appointment context.">
+      <PageCard title="Thao tác">
         <div className="flex flex-wrap gap-3">
-          <Link
-            to={canOpenLifecycle ? `/appointments/lifecycle?appointmentId=${appointmentId}&sessionId=${effectiveSessionId}` : '/appointments/lifecycle'}
-            className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-          >
-            Open appointment lifecycle
-          </Link>
-          <Link
-            to={effectiveSessionId ? `/scheduling?sessionId=${effectiveSessionId}` : '/scheduling'}
-            className="inline-flex rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-900/40"
-          >
-            Back to scheduling
-          </Link>
+          <Link to={canOpenLifecycle ? `/appointments/lifecycle?appointmentId=${appointmentId}&sessionId=${effectiveSessionId}` : '/appointments/lifecycle'} className="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700">Quản lý lịch hẹn</Link>
+          <Link to={effectiveSessionId ? `/scheduling?sessionId=${effectiveSessionId}` : '/scheduling'} className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Quay lại đặt lịch</Link>
         </div>
       </PageCard>
     </div>

@@ -4,27 +4,21 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 
 export function SchedulingResultCard({ result }: { result: ScheduleSessionResponse }) {
   return (
-    <div className="mt-4 rounded-xl border border-cyan-800 bg-cyan-950/30 p-4 text-sm text-cyan-200">
+    <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-medium text-white">Scheduling completed</p>
+        <p className="font-semibold text-emerald-800">Đặt lịch thành công!</p>
         <StatusBadge value={result.status} />
       </div>
-      <p className="mt-3">Appointment ID: {result.appointmentId}</p>
-      <p>Session ID: {result.sessionId}</p>
-      <p>Start: {new Date(result.startTime).toLocaleString()}</p>
-      <p>End: {new Date(result.endTime).toLocaleString()}</p>
+      <div className="mt-3 space-y-1 text-emerald-700">
+        <p>Bắt đầu: {new Date(result.startTime).toLocaleString()}</p>
+        <p>Kết thúc: {new Date(result.endTime).toLocaleString()}</p>
+      </div>
       <div className="mt-4 flex flex-wrap gap-3">
-        <Link
-          to={`/appointments/detail?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`}
-          className="inline-flex rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-900/40"
-        >
-          Open appointment detail
+        <Link to={`/appointments/detail?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white">
+          Xem chi tiết lịch hẹn
         </Link>
-        <Link
-          to={`/appointments/lifecycle?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`}
-          className="inline-flex rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-900/40"
-        >
-          Go to appointment lifecycle
+        <Link to={`/appointments/lifecycle?appointmentId=${result.appointmentId}&sessionId=${result.sessionId}`} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700">
+          Quản lý lịch hẹn
         </Link>
       </div>
     </div>
